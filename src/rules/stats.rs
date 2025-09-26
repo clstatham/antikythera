@@ -25,21 +25,21 @@ impl Stat {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct StatBlock {
+pub struct Stats {
     stats: FxHashMap<Stat, u32>,
 }
 
-impl Default for StatBlock {
+impl Default for Stats {
     fn default() -> Self {
         let mut stats = FxHashMap::default();
         for stat in Stat::all() {
             stats.insert(stat, 10);
         }
-        StatBlock { stats }
+        Stats { stats }
     }
 }
 
-impl StatBlock {
+impl Stats {
     pub fn with_stat(mut self, stat: Stat, value: u32) -> Self {
         self.stats.insert(stat, value);
         self
@@ -47,6 +47,10 @@ impl StatBlock {
 
     pub fn get(&self, stat: Stat) -> u32 {
         self.stats.get(&stat).copied().unwrap_or(10)
+    }
+
+    pub fn get_mut(&mut self, stat: Stat) -> &mut u32 {
+        self.stats.entry(stat).or_insert(10)
     }
 
     pub fn set(&mut self, stat: Stat, value: u32) {
@@ -64,7 +68,7 @@ mod tests {
 
     #[test]
     fn test_stat_block_default() {
-        let stats = StatBlock::default();
+        let stats = Stats::default();
         for stat in Stat::all() {
             assert_eq!(stats.get(stat), 10);
             assert_eq!(stats.modifier(stat), 0);
@@ -73,14 +77,14 @@ mod tests {
 
     #[test]
     fn test_stat_block_with_stat() {
-        let stats = StatBlock::default().with_stat(Stat::Strength, 16);
+        let stats = Stats::default().with_stat(Stat::Strength, 16);
         assert_eq!(stats.get(Stat::Strength), 16);
         assert_eq!(stats.modifier(Stat::Strength), 3);
     }
 
     #[test]
     fn test_stat_block_set() {
-        let mut stats = StatBlock::default();
+        let mut stats = Stats::default();
         stats.set(Stat::Dexterity, 14);
         assert_eq!(stats.get(Stat::Dexterity), 14);
         assert_eq!(stats.modifier(Stat::Dexterity), 2);
@@ -88,7 +92,7 @@ mod tests {
 
     #[test]
     fn test_stat_block_modifier() {
-        let stats = StatBlock::default()
+        let stats = Stats::default()
             .with_stat(Stat::Constitution, 8)
             .with_stat(Stat::Intelligence, 18);
         assert_eq!(stats.modifier(Stat::Constitution), -1);

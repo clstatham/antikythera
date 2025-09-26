@@ -1,6 +1,8 @@
+use serde::{Deserialize, Serialize};
+
 use crate::statistics::pmf::binomial_coefficient;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct HitModel {
     pub p_miss: f64,
     pub p_hit: f64,

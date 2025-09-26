@@ -6,6 +6,12 @@ pub struct Roller {
 }
 
 impl Roller {
+    #[allow(clippy::new_without_default)]
+    pub fn new() -> Self {
+        let rng = StdRng::from_os_rng();
+        Roller { rng }
+    }
+
     pub fn from_seed(seed: u64) -> Self {
         let rng = StdRng::seed_from_u64(seed);
         Roller { rng }

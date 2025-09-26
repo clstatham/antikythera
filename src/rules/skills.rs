@@ -84,7 +84,7 @@ pub enum Proficiency {
     Expert,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SkillProficiencies {
     proficiencies: FxHashMap<Skill, Proficiency>,
 }

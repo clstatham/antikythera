@@ -1,6 +1,10 @@
+pub mod actions;
 pub mod actor;
+pub mod damage;
 pub mod death;
 pub mod dice;
+pub mod items;
 pub mod saves;
 pub mod skills;
+pub mod spells;
 pub mod stats;
