@@ -8,7 +8,7 @@ use crate::{
         saves::SavingThrow,
         spells::{SpellId, SpellTarget},
     },
-    simulation::state::SimulationState,
+    simulation::state::State,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -63,7 +63,7 @@ impl Action {
     pub fn pretty_print(
         &self,
         f: &mut impl std::fmt::Write,
-        state: &SimulationState,
+        state: &State,
     ) -> std::fmt::Result {
         match self {
             Action::Wait => write!(f, "Wait"),
@@ -214,7 +214,7 @@ impl ActionTaken {
     pub fn pretty_print(
         &self,
         f: &mut impl std::fmt::Write,
-        state: &SimulationState,
+        state: &State,
     ) -> std::fmt::Result {
         write!(f, "Actor ")?;
         self.actor.pretty_print(f, state)?;

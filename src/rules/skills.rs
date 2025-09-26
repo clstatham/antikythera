@@ -77,39 +77,42 @@ impl Skill {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub enum Proficiency {
+pub enum SkillProficiency {
     None,
-    HalfProficient, // e.g., for Jack of All Trades (Bard feature)
+    HalfProficient,
     Proficient,
     Expert,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SkillProficiencies {
-    proficiencies: FxHashMap<Skill, Proficiency>,
+    proficiencies: FxHashMap<Skill, SkillProficiency>,
 }
 
 impl Default for SkillProficiencies {
     fn default() -> Self {
         let mut proficiencies = FxHashMap::default();
         for skill in Skill::all() {
-            proficiencies.insert(skill, Proficiency::None);
+            proficiencies.insert(skill, SkillProficiency::None);
         }
         SkillProficiencies { proficiencies }
     }
 }
 
 impl SkillProficiencies {
-    pub fn with_proficiency(mut self, skill: Skill, proficiency: Proficiency) -> Self {
+    pub fn with_proficiency(mut self, skill: Skill, proficiency: SkillProficiency) -> Self {
         self.proficiencies.insert(skill, proficiency);
         self
     }
 
-    pub fn get(&self, skill: Skill) -> Proficiency {
-        *self.proficiencies.get(&skill).unwrap_or(&Proficiency::None)
+    pub fn get(&self, skill: Skill) -> SkillProficiency {
+        *self
+            .proficiencies
+            .get(&skill)
+            .unwrap_or(&SkillProficiency::None)
     }
 
-    pub fn set(&mut self, skill: Skill, proficiency: Proficiency) {
+    pub fn set(&mut self, skill: Skill, proficiency: SkillProficiency) {
         self.proficiencies.insert(skill, proficiency);
     }
 }
@@ -117,7 +120,7 @@ impl SkillProficiencies {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SkillCheck {
     pub skill: Skill,
-    pub proficiency: Proficiency,
+    pub proficiency: SkillProficiency,
     pub proficiency_bonus: u32,
     pub modifier: i32,
     pub roll_settings: RollSettings,
@@ -126,10 +129,10 @@ pub struct SkillCheck {
 impl SkillCheck {
     pub fn total_modifier(&self) -> i32 {
         let proficiency_bonus = match self.proficiency {
-            Proficiency::None => 0,
-            Proficiency::HalfProficient => self.proficiency_bonus / 2,
-            Proficiency::Proficient => self.proficiency_bonus,
-            Proficiency::Expert => self.proficiency_bonus * 2,
+            SkillProficiency::None => 0,
+            SkillProficiency::HalfProficient => self.proficiency_bonus / 2,
+            SkillProficiency::Proficient => self.proficiency_bonus,
+            SkillProficiency::Expert => self.proficiency_bonus * 2,
         };
         self.modifier + proficiency_bonus as i32
     }
@@ -154,7 +157,7 @@ mod tests {
     fn test_skill_check_total_modifier() {
         let check = SkillCheck {
             skill: Skill::Stealth,
-            proficiency: Proficiency::Proficient,
+            proficiency: SkillProficiency::Proficient,
             proficiency_bonus: 4,
             modifier: 1,
             roll_settings: RollSettings {
@@ -171,7 +174,7 @@ mod tests {
     fn test_skill_check_roll() {
         let check = SkillCheck {
             skill: Skill::Stealth,
-            proficiency: Proficiency::Expert,
+            proficiency: SkillProficiency::Expert,
             proficiency_bonus: 4,
             modifier: 1,
             roll_settings: RollSettings {

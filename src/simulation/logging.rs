@@ -1,30 +1,21 @@
 use serde::{Deserialize, Serialize};
+use unicode_width::UnicodeWidthStr;
 
 use crate::{
-    rules::{actions::ActionTaken, actor::ActorId, dice::RollResult, items::ItemId},
-    simulation::{state::SimulationState, transition::Transition},
+    rules::{
+        actions::{Action, ActionTaken},
+        actor::ActorId,
+        dice::RollResult,
+        items::ItemId,
+    },
+    simulation::{state::State, transition::Transition},
 };
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum LogEntry {
-    InitiativeRoll {
-        actor: ActorId,
-        roll: RollResult,
-    },
-    BeginTurn {
-        actor: ActorId,
-    },
-    EndTurn {
-        actor: ActorId,
-    },
     Transition(Transition),
     Roll(RollResult),
     Action(ActionTaken),
-    AttackAttempt {
-        attacker: ActorId,
-        target: ActorId,
-        weapon: ItemId,
-    },
     AttackMiss {
         attacker: ActorId,
         target: ActorId,
@@ -35,32 +26,44 @@ pub enum LogEntry {
         target: ActorId,
         weapon: ItemId,
     },
+    ActorDowned {
+        actor: ActorId,
+    },
+    ActorStabilized {
+        actor: ActorId,
+    },
+    ActorKilled {
+        actor: ActorId,
+    },
 }
 
 impl LogEntry {
-    fn pretty_print(
-        &self,
-        f: &mut impl std::fmt::Write,
-        state: &SimulationState,
-    ) -> std::fmt::Result {
+    pub fn emoji(&self) -> &'static str {
         match self {
-            LogEntry::InitiativeRoll { actor, roll } => {
-                write!(f, "Actor ")?;
-                actor.pretty_print(f, state)?;
-                write!(f, " rolls for initiative: ")?;
-                roll.pretty_print(f)?;
-                Ok(())
-            }
-            LogEntry::BeginTurn { actor } => {
-                write!(f, "Begin turn for actor ")?;
-                actor.pretty_print(f, state)?;
-                Ok(())
-            }
-            LogEntry::EndTurn { actor } => {
-                write!(f, "End turn for actor ")?;
-                actor.pretty_print(f, state)?;
-                Ok(())
-            }
+            LogEntry::Transition(t) => t.emoji(),
+            LogEntry::Roll(_) => "🎲",
+            LogEntry::Action(a) => match a.action {
+                Action::Wait => "💤",
+                _ => "⚔️",
+            },
+            LogEntry::AttackHit { .. } => "💥",
+            LogEntry::AttackMiss { .. } => "❌",
+            LogEntry::ActorDowned { .. } => "💀",
+            LogEntry::ActorStabilized { .. } => "❤️‍🩹",
+            LogEntry::ActorKilled { .. } => "☠️",
+        }
+    }
+
+    pub fn is_quiet(&self) -> bool {
+        match self {
+            LogEntry::Transition(t) => t.is_quiet(),
+            LogEntry::Action(a) => matches!(a.action, Action::Wait),
+            _ => false,
+        }
+    }
+
+    fn pretty_print(&self, f: &mut impl std::fmt::Write, state: &State) -> std::fmt::Result {
+        match self {
             LogEntry::Transition(transition) => transition.pretty_print(f, state),
             LogEntry::Roll(roll) => {
                 roll.pretty_print(f)?;
@@ -96,8 +99,24 @@ impl LogEntry {
                 weapon.pretty_print(f, state)?;
                 Ok(())
             }
-
-            _ => Ok(()),
+            LogEntry::ActorDowned { actor } => {
+                write!(f, "Actor ")?;
+                actor.pretty_print(f, state)?;
+                write!(f, " is downed")?;
+                Ok(())
+            }
+            LogEntry::ActorStabilized { actor } => {
+                write!(f, "Actor ")?;
+                actor.pretty_print(f, state)?;
+                write!(f, " is stabilized")?;
+                Ok(())
+            }
+            LogEntry::ActorKilled { actor } => {
+                write!(f, "Actor ")?;
+                actor.pretty_print(f, state)?;
+                write!(f, " is killed")?;
+                Ok(())
+            }
         }
     }
 }
@@ -109,20 +128,20 @@ pub struct SimulationLog {
 }
 
 impl SimulationLog {
-    pub fn log(&mut self, entry: LogEntry, state: &SimulationState) {
-        let mut buf = String::new();
-        entry.pretty_print(&mut buf, state).ok();
-        if !buf.is_empty() {
+    pub fn log(&mut self, entry: LogEntry, state: &State) {
+        if !entry.is_quiet() {
+            let mut buf = String::new();
+
+            let emoji = entry.emoji();
+            let emoji = format_emoji(emoji, 2);
+            buf.push_str(&emoji);
+            buf.push(' ');
+
+            entry.pretty_print(&mut buf, state).ok();
             log::info!("{}", buf);
         }
 
         self.entries.push(entry);
-    }
-
-    pub fn extend(&mut self, entries: impl IntoIterator<Item = LogEntry>, state: &SimulationState) {
-        for entry in entries {
-            self.log(entry, state);
-        }
     }
 
     pub fn save(&self, path: &std::path::Path) -> anyhow::Result<()> {
@@ -130,4 +149,23 @@ impl SimulationLog {
         serde_json::to_writer_pretty(file, &self)?;
         Ok(())
     }
+}
+
+fn emoji_emoji_presentation(s: &str) -> String {
+    if s.chars().any(|c| c == '\u{FE0F}' || c == '\u{200D}') {
+        s.to_string()
+    } else {
+        format!("{s}\u{FE0F}")
+    }
+}
+
+fn pad_cells(s: &str, field_cells: usize) -> String {
+    let w = UnicodeWidthStr::width(s);
+    let pad = field_cells.saturating_sub(w);
+    format!("{s}{}", " ".repeat(pad))
+}
+
+fn format_emoji(emoji: &str, field_cells: usize) -> String {
+    let e = emoji_emoji_presentation(emoji);
+    pad_cells(&e, field_cells)
 }

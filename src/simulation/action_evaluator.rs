@@ -4,7 +4,7 @@ use crate::{
         actor::ActorId,
         items::{ItemId, ItemType},
     },
-    simulation::{logging::LogEntry, state::SimulationState, transition::Transition},
+    simulation::{logging::LogEntry, state::State, transition::Transition},
     statistics::roller::Roller,
 };
 
@@ -15,7 +15,7 @@ impl ActionEvaluator {
         &self,
         actor: ActorId,
         action: &ActionTaken,
-        state: &SimulationState,
+        state: &State,
         rng: &mut Roller,
     ) -> anyhow::Result<Vec<LogEntry>> {
         let mut logs = Vec::new();
@@ -47,12 +47,6 @@ impl ActionEvaluator {
                     .get(target)
                     .ok_or_else(|| anyhow::anyhow!("Target actor not found"))?;
 
-                logs.push(LogEntry::AttackAttempt {
-                    attacker: actor.id,
-                    target: target.id,
-                    weapon: ItemId(0), // Unarmed strike has no item ID
-                });
-
                 let attack_roll = actor.plan_unarmed_strike_roll(*attack_roll_settings);
                 let attack_result = attack_roll.roll(rng)?;
                 logs.push(LogEntry::Roll(attack_result.clone()));
@@ -80,6 +74,10 @@ impl ActionEvaluator {
                         target: target.id,
                         delta: -damage_result.total,
                     }));
+
+                    if target.health <= damage_result.total {
+                        logs.push(LogEntry::ActorDowned { actor: target.id });
+                    }
                 } else {
                     logs.push(LogEntry::AttackMiss {
                         attacker: actor.id,
@@ -110,13 +108,7 @@ impl ActionEvaluator {
                     return Err(anyhow::anyhow!("Item used for attack is not a weapon"));
                 };
 
-                logs.push(LogEntry::AttackAttempt {
-                    attacker: actor.id,
-                    target: target.id,
-                    weapon: *weapon_used_id,
-                });
-
-                let attack_roll = weapon_used.plan_attack_roll(*attack_roll_settings);
+                let attack_roll = actor.plan_attack_roll(weapon_used, *attack_roll_settings)?;
                 let attack_result = attack_roll.roll(rng)?;
                 logs.push(LogEntry::Roll(attack_result.clone()));
 
@@ -147,6 +139,10 @@ impl ActionEvaluator {
                         target: target.id,
                         delta: -damage_result.total,
                     }));
+
+                    if target.health <= damage_result.total {
+                        logs.push(LogEntry::ActorDowned { actor: target.id });
+                    }
                 } else {
                     logs.push(LogEntry::AttackMiss {
                         attacker: actor.id,
@@ -176,7 +172,7 @@ mod tests {
     #[test]
     fn test_evaluate_attack_action() {
         // Setup a simple simulation state with two actors and a weapon
-        let mut state = SimulationState::default();
+        let mut state = State::default();
 
         let actor1 = Actor::test_actor(1, "Attacker");
         let actor1_id = state.add_actor(actor1);
@@ -217,10 +213,6 @@ mod tests {
         assert!(!logs.is_empty());
 
         // Check that the logs contain expected entries
-        let attack_attempt_log = logs
-            .iter()
-            .find(|log| matches!(log, LogEntry::AttackAttempt { .. }));
-        assert!(attack_attempt_log.is_some());
         let roll_logs: Vec<_> = logs
             .iter()
             .filter(|log| matches!(log, LogEntry::Roll(_)))

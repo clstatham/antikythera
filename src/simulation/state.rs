@@ -8,7 +8,7 @@ use crate::rules::{
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct SimulationState {
+pub struct State {
     pub turn: u64,
     pub actors: BTreeMap<ActorId, Actor>,
     pub next_actor_id: u32,
@@ -19,13 +19,13 @@ pub struct SimulationState {
     pub current_turn_index: Option<usize>,
 }
 
-impl Default for SimulationState {
+impl Default for State {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl SimulationState {
+impl State {
     pub fn new() -> Self {
         Self {
             turn: 0,
@@ -79,8 +79,7 @@ impl SimulationState {
     }
 
     pub fn enemies_of(&self, actor_id: ActorId) -> Vec<ActorId> {
-        let mut enemies =
-            BTreeSet::<ActorId>::from_iter(self.actors.keys().cloned().collect::<Vec<_>>());
+        let mut enemies = BTreeSet::from_iter(self.actors.keys().cloned().collect::<Vec<_>>());
         if let Some(allies) = self.allies_of(actor_id) {
             for ally in allies {
                 enemies.remove(ally);

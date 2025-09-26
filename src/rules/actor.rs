@@ -6,12 +6,15 @@ use crate::{
         actions::ActionEconomy,
         death::DeathSaves,
         dice::{RollPlan, RollSettings},
-        items::{EquippedItems, Inventory, Item},
+        items::{
+            EquippedItems, Inventory, Item, Weapon, WeaponProficiencies, WeaponProficiency,
+            WeaponType,
+        },
         saves::{SavingThrow, SavingThrowProficiencies},
-        skills::{Proficiency, Skill, SkillProficiencies},
+        skills::{Skill, SkillProficiencies, SkillProficiency},
         stats::{Stat, Stats},
     },
-    simulation::state::SimulationState,
+    simulation::state::State,
 };
 
 #[derive(
@@ -23,7 +26,7 @@ impl ActorId {
     pub fn pretty_print(
         &self,
         f: &mut impl std::fmt::Write,
-        state: &SimulationState,
+        state: &State,
     ) -> std::fmt::Result {
         if let Some(actor) = state.actors.get(self) {
             write!(f, "{} (ID: {})", actor.name, self.0)
@@ -56,6 +59,7 @@ impl ActorBuilder {
                 action_economy: ActionEconomy::default(),
                 equipped_items: EquippedItems::default(),
                 inventory: Inventory::default(),
+                weapon_proficiencies: WeaponProficiencies::default(),
             },
         }
     }
@@ -96,7 +100,7 @@ impl ActorBuilder {
         self
     }
 
-    pub fn skill_proficiency(mut self, skill: Skill, proficiency: Proficiency) -> Self {
+    pub fn skill_proficiency(mut self, skill: Skill, proficiency: SkillProficiency) -> Self {
         self.actor.skill_proficiencies.set(skill, proficiency);
         self
     }
@@ -108,6 +112,22 @@ impl ActorBuilder {
 
     pub fn saving_throw_proficiency(mut self, save: SavingThrow, proficient: bool) -> Self {
         self.actor.saving_throw_proficiencies.set(save, proficient);
+        self
+    }
+
+    pub fn weapon_proficiencies(mut self, proficiencies: WeaponProficiencies) -> Self {
+        self.actor.weapon_proficiencies = proficiencies;
+        self
+    }
+
+    pub fn weapon_proficiency(
+        mut self,
+        weapon_type: WeaponType,
+        proficiency: WeaponProficiency,
+    ) -> Self {
+        self.actor
+            .weapon_proficiencies
+            .set(weapon_type, proficiency);
         self
     }
 
@@ -133,6 +153,7 @@ pub struct Actor {
     pub action_economy: ActionEconomy,
     pub equipped_items: EquippedItems,
     pub inventory: Inventory,
+    pub weapon_proficiencies: WeaponProficiencies,
 }
 
 impl Actor {
@@ -148,16 +169,31 @@ impl Actor {
         self.health <= -self.max_health || self.death_saves.is_dead()
     }
 
+    pub fn proficiency_bonus(&self) -> u32 {
+        match self.level {
+            1..=4 => 2,
+            5..=8 => 3,
+            9..=12 => 4,
+            13..=16 => 5,
+            17..=20 => 6,
+            _ => 2 + (self.level - 1) / 4, // For levels beyond 20
+        }
+    }
+
+    pub fn proficiency_bonus_with(&self, proficiency: SkillProficiency) -> u32 {
+        match proficiency {
+            SkillProficiency::None => 0,
+            SkillProficiency::HalfProficient => self.proficiency_bonus() / 2,
+            SkillProficiency::Proficient => self.proficiency_bonus(),
+            SkillProficiency::Expert => self.proficiency_bonus() * 2,
+        }
+    }
+
     pub fn skill_modifier(&self, skill: Skill) -> i32 {
         let stat = skill.associated_stat();
         let stat_mod = self.stats.modifier(stat);
         let proficiency = self.skill_proficiencies.get(skill);
-        let proficiency_bonus = match proficiency {
-            Proficiency::None => 0,
-            Proficiency::HalfProficient => self.level / 2,
-            Proficiency::Proficient => self.level,
-            Proficiency::Expert => self.level * 2,
-        };
+        let proficiency_bonus = self.proficiency_bonus_with(proficiency);
         stat_mod + proficiency_bonus as i32
     }
 
@@ -201,6 +237,23 @@ impl Actor {
             modifier: damage_modifier,
             settings: RollSettings::default(),
         }
+    }
+
+    pub fn plan_attack_roll(
+        &self,
+        weapon: &Weapon,
+        roll_settings: RollSettings,
+    ) -> anyhow::Result<RollPlan> {
+        let mut attack_modifier = weapon.attack_bonus;
+        let prof = self.weapon_proficiencies.get(weapon.weapon_type);
+        attack_modifier += self.proficiency_bonus_with(prof.into()) as i32;
+
+        Ok(RollPlan {
+            num_dice: 1,
+            die_size: 20,
+            modifier: attack_modifier,
+            settings: roll_settings,
+        })
     }
 
     pub fn plan_skill_check(&self, skill: Skill, roll_settings: RollSettings) -> RollPlan {
@@ -268,6 +321,7 @@ impl Actor {
             action_economy: ActionEconomy::default(),
             equipped_items: EquippedItems::default(),
             inventory: Inventory::default(),
+            weapon_proficiencies: WeaponProficiencies::default(),
         }
     }
 }

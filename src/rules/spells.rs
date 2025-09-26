@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     rules::{actor::ActorId, damage::DamageInstance, dice::RollPlan, items::ItemId, stats::Stat},
-    simulation::state::SimulationState,
+    simulation::state::State,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, From, Into)]
@@ -73,7 +73,7 @@ impl SpellTarget {
     pub fn pretty_print(
         &self,
         f: &mut impl std::fmt::Write,
-        state: &SimulationState,
+        state: &State,
     ) -> std::fmt::Result {
         match self {
             SpellTarget::SelfTarget => write!(f, "themself"),

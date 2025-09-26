@@ -3,7 +3,8 @@ use rustc_hash::FxHashMap;
 use serde::{Deserialize, Serialize};
 
 use crate::rules::{
-    dice::{RollFormula, RollPlan, RollSettings},
+    dice::{RollFormula, RollPlan},
+    skills::SkillProficiency,
     spells::SpellId,
 };
 
@@ -16,7 +17,7 @@ impl ItemId {
     pub fn pretty_print(
         &self,
         f: &mut impl std::fmt::Write,
-        state: &crate::simulation::state::SimulationState,
+        state: &crate::simulation::state::State,
     ) -> std::fmt::Result {
         for actor in state.actors.values() {
             if let Some(entry) = actor.inventory.items.get(self) {
@@ -61,6 +62,7 @@ pub struct Potion {
 impl Potion {
     #[cfg(test)]
     pub fn test_potion() -> Self {
+        use crate::rules::dice::RollSettings;
         Self {
             healing_amount: RollPlan {
                 num_dice: 2,
@@ -77,8 +79,93 @@ pub struct Scroll {
     pub spell_id: SpellId,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum WeaponType {
+    Club,
+    Dagger,
+    Greatclub,
+    Handaxe,
+    Javelin,
+    LightHammer,
+    Mace,
+    Quarterstaff,
+    Sickle,
+    Spear,
+    CrossbowLight,
+    Dart,
+    Shortbow,
+    Sling,
+    Battleaxe,
+    Flail,
+    Glaive,
+    Greataxe,
+    Greatsword,
+    Halberd,
+    Lance,
+    Longsword,
+    Maul,
+    Morningstar,
+    Pike,
+    Rapier,
+    Scimitar,
+    Shortsword,
+    Trident,
+    WarPick,
+    Warhammer,
+    Whip,
+    Blowgun,
+    CrossbowHeavy,
+    Longbow,
+    Net,
+}
+
+impl WeaponType {
+    pub fn all() -> &'static [WeaponType] {
+        use WeaponType::*;
+        &[
+            Club,
+            Dagger,
+            Greatclub,
+            Handaxe,
+            Javelin,
+            LightHammer,
+            Mace,
+            Quarterstaff,
+            Sickle,
+            Spear,
+            CrossbowLight,
+            Dart,
+            Shortbow,
+            Sling,
+            Battleaxe,
+            Flail,
+            Glaive,
+            Greataxe,
+            Greatsword,
+            Halberd,
+            Lance,
+            Longsword,
+            Maul,
+            Morningstar,
+            Pike,
+            Rapier,
+            Scimitar,
+            Shortsword,
+            Trident,
+            WarPick,
+            Warhammer,
+            Whip,
+            Blowgun,
+            CrossbowHeavy,
+            Longbow,
+            Net,
+        ]
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Weapon {
+    pub weapon_type: WeaponType,
     pub attack_bonus: i32,
     pub damage: RollFormula,
     pub critical_damage: Option<RollFormula>,
@@ -94,19 +181,12 @@ impl Weapon {
         self.range.is_some()
     }
 
-    pub fn plan_attack_roll(&self, settings: RollSettings) -> RollPlan {
-        RollPlan {
-            num_dice: 1,
-            die_size: 20,
-            modifier: self.attack_bonus,
-            settings,
-        }
-    }
-
     #[cfg(test)]
     pub fn test_sword() -> Self {
+        use crate::rules::dice::RollSettings;
         Self {
-            attack_bonus: 5,
+            attack_bonus: 1,
+            weapon_type: WeaponType::Longsword,
             damage: RollFormula {
                 rolls: vec![RollPlan {
                     num_dice: 1,
@@ -128,10 +208,11 @@ pub struct WeaponBuilder {
 
 impl WeaponBuilder {
     #[allow(clippy::new_without_default)]
-    pub fn new() -> Self {
+    pub fn new(weapon_type: WeaponType) -> Self {
         Self {
             weapon: Weapon {
                 attack_bonus: 0,
+                weapon_type,
                 damage: RollFormula {
                     rolls: vec![],
                     flat_modifier: 0,
@@ -164,6 +245,60 @@ impl WeaponBuilder {
 
     pub fn build(self) -> Weapon {
         self.weapon
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum WeaponProficiency {
+    None,
+    HalfProficient,
+    Proficient,
+}
+
+impl From<WeaponProficiency> for SkillProficiency {
+    fn from(prof: WeaponProficiency) -> Self {
+        match prof {
+            WeaponProficiency::None => SkillProficiency::None,
+            WeaponProficiency::HalfProficient => SkillProficiency::HalfProficient,
+            WeaponProficiency::Proficient => SkillProficiency::Proficient,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct WeaponProficiencies {
+    proficiencies: FxHashMap<WeaponType, WeaponProficiency>,
+}
+
+impl Default for WeaponProficiencies {
+    fn default() -> Self {
+        let mut proficiencies = FxHashMap::default();
+        for weapon_type in WeaponType::all() {
+            proficiencies.insert(*weapon_type, WeaponProficiency::None);
+        }
+        WeaponProficiencies { proficiencies }
+    }
+}
+
+impl WeaponProficiencies {
+    pub fn with_proficiency(
+        mut self,
+        weapon_type: WeaponType,
+        proficiency: WeaponProficiency,
+    ) -> Self {
+        self.proficiencies.insert(weapon_type, proficiency);
+        self
+    }
+
+    pub fn get(&self, weapon_type: WeaponType) -> WeaponProficiency {
+        *self
+            .proficiencies
+            .get(&weapon_type)
+            .unwrap_or(&WeaponProficiency::None)
+    }
+
+    pub fn set(&mut self, weapon_type: WeaponType, proficiency: WeaponProficiency) {
+        self.proficiencies.insert(weapon_type, proficiency);
     }
 }
 

@@ -6,7 +6,7 @@ use crate::{
         actor::ActorId,
         items::ItemType,
     },
-    simulation::state::SimulationState,
+    simulation::state::State,
     statistics::roller::Roller,
 };
 
@@ -15,7 +15,7 @@ pub trait Policy: 'static {
         &self,
         action_type: ActionEconomyUsage,
         actor: ActorId,
-        state: &SimulationState,
+        state: &State,
         rng: &mut Roller,
     ) -> anyhow::Result<ActionTaken>;
 }
@@ -28,7 +28,7 @@ impl Policy for NoOpPolicy {
         &self,
         action_type: ActionEconomyUsage,
         actor: ActorId,
-        _state: &SimulationState,
+        _state: &State,
         _rng: &mut Roller,
     ) -> anyhow::Result<ActionTaken> {
         Ok(ActionTaken {
@@ -43,7 +43,7 @@ impl Policy for NoOpPolicy {
 pub struct RandomPolicy;
 
 impl RandomPolicy {
-    fn random_action(&self, actor: ActorId, state: &SimulationState, rng: &mut Roller) -> Action {
+    fn random_action(&self, actor: ActorId, state: &State, rng: &mut Roller) -> Action {
         let enemies = state.enemies_of(actor);
         if enemies.is_empty() {
             return Action::Wait;
@@ -80,7 +80,7 @@ impl Policy for RandomPolicy {
         &self,
         action_type: ActionEconomyUsage,
         actor: ActorId,
-        state: &SimulationState,
+        state: &State,
         rng: &mut Roller,
     ) -> anyhow::Result<ActionTaken> {
         if action_type != ActionEconomyUsage::Action {
