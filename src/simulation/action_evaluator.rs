@@ -29,7 +29,7 @@ impl ActionEvaluator {
         }
 
         // the action was successfully taken at this point
-        logs.push(LogEntry::Transition(Transition::ActionUsed {
+        logs.push(LogEntry::Transition(Transition::ActionEconomyUsed {
             target: actor.id,
             action_type: action.action_type,
         }));

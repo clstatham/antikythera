@@ -23,15 +23,11 @@ use crate::{
 pub struct ActorId(pub u32);
 
 impl ActorId {
-    pub fn pretty_print(
-        &self,
-        f: &mut impl std::fmt::Write,
-        state: &State,
-    ) -> std::fmt::Result {
+    pub fn pretty_print(&self, f: &mut impl std::fmt::Write, state: &State) -> std::fmt::Result {
         if let Some(actor) = state.actors.get(self) {
-            write!(f, "{} (ID: {})", actor.name, self.0)
+            write!(f, "{}", actor.name)
         } else {
-            write!(f, "Unknown Actor (ID: {})", self.0)
+            write!(f, "<Actor ID: {}>", self.0)
         }
     }
 }

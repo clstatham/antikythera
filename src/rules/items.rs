@@ -2,11 +2,7 @@ use derive_more::{Deref, From, Into};
 use rustc_hash::FxHashMap;
 use serde::{Deserialize, Serialize};
 
-use crate::rules::{
-    dice::{RollFormula, RollPlan},
-    skills::SkillProficiency,
-    spells::SpellId,
-};
+use crate::rules::{dice::RollPlan, skills::SkillProficiency, spells::SpellId};
 
 #[derive(
     Debug, Clone, Copy, PartialEq, PartialOrd, Ord, Eq, Hash, Serialize, Deserialize, From, Into,
@@ -21,10 +17,10 @@ impl ItemId {
     ) -> std::fmt::Result {
         for actor in state.actors.values() {
             if let Some(entry) = actor.inventory.items.get(self) {
-                return write!(f, "{} (ID: {})", entry.item.name, self.0);
+                return write!(f, "{}", entry.item.name);
             }
         }
-        write!(f, "Unarmed Strike (ID: {})", self.0)
+        write!(f, "Unarmed Strike")
     }
 }
 
@@ -167,8 +163,8 @@ impl WeaponType {
 pub struct Weapon {
     pub weapon_type: WeaponType,
     pub attack_bonus: i32,
-    pub damage: RollFormula,
-    pub critical_damage: Option<RollFormula>,
+    pub damage: RollPlan,
+    pub critical_damage: Option<RollPlan>,
     pub range: Option<u32>, // in feet, None for melee
 }
 
@@ -187,14 +183,11 @@ impl Weapon {
         Self {
             attack_bonus: 1,
             weapon_type: WeaponType::Longsword,
-            damage: RollFormula {
-                rolls: vec![RollPlan {
-                    num_dice: 1,
-                    die_size: 8,
-                    modifier: 3,
-                    settings: RollSettings::default(),
-                }],
-                flat_modifier: 0,
+            damage: RollPlan {
+                num_dice: 1,
+                die_size: 8,
+                modifier: 3,
+                settings: RollSettings::default(),
             },
             critical_damage: None,
             range: None,
@@ -213,9 +206,11 @@ impl WeaponBuilder {
             weapon: Weapon {
                 attack_bonus: 0,
                 weapon_type,
-                damage: RollFormula {
-                    rolls: vec![],
-                    flat_modifier: 0,
+                damage: RollPlan {
+                    num_dice: 0,
+                    die_size: 0,
+                    modifier: 0,
+                    settings: Default::default(),
                 },
                 critical_damage: None,
                 range: None,
@@ -228,12 +223,12 @@ impl WeaponBuilder {
         self
     }
 
-    pub fn damage(mut self, damage: impl Into<RollFormula>) -> Self {
+    pub fn damage(mut self, damage: impl Into<RollPlan>) -> Self {
         self.weapon.damage = damage.into();
         self
     }
 
-    pub fn critical_damage(mut self, critical_damage: impl Into<RollFormula>) -> Self {
+    pub fn critical_damage(mut self, critical_damage: impl Into<RollPlan>) -> Self {
         self.weapon.critical_damage = Some(critical_damage.into());
         self
     }

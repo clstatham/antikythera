@@ -52,15 +52,34 @@ impl RollResult {
     }
 
     pub fn pretty_print(&self, f: &mut impl std::fmt::Write) -> std::fmt::Result {
-        if self.critical == Critical::Success {
-            write!(f, "Critical Success: ")?;
-        } else if self.critical == Critical::Failure {
-            write!(f, "Critical Failure: ")?;
-        } else {
-            write!(f, "Roll: ")?;
+        write!(f, "Rolled {}", self.roll_used.num_dice)?;
+        write!(f, "d{}", self.roll_used.die_size)?;
+        if self.roll_used.modifier != 0 {
+            if self.roll_used.modifier > 0 {
+                write!(f, "+{}", self.roll_used.modifier)?;
+            } else {
+                write!(f, "-{}", -self.roll_used.modifier)?;
+            }
         }
-        write!(f, "{} ", self.total)?;
-        write!(f, "from dice: {:?}", self.individual_rolls)?;
+        match self.roll_used.settings.advantage {
+            Advantage::Normal => {}
+            Advantage::Advantage => write!(f, " with advantage")?,
+            Advantage::Disadvantage => write!(f, " with disadvantage")?,
+        }
+        write!(f, ": [")?;
+        for (i, roll) in self.individual_rolls.iter().enumerate() {
+            if i > 0 {
+                write!(f, ", ")?;
+            }
+            write!(f, "{}", roll)?;
+        }
+        write!(f, "] = {}", self.total)?;
+        match self.critical {
+            Critical::Success => write!(f, " (Critical Success)")?,
+            Critical::Failure => write!(f, " (Critical Failure)")?,
+            Critical::None => {}
+        }
+
         Ok(())
     }
 }
@@ -165,63 +184,6 @@ impl RollPlan {
 impl From<&str> for RollPlan {
     fn from(value: &str) -> Self {
         crate::roll_parser::parse_roll(value).unwrap()
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct RollFormula {
-    pub rolls: Vec<RollPlan>,
-    pub flat_modifier: i32,
-}
-
-impl RollFormula {
-    pub fn roll(&self, rng: &mut Roller) -> anyhow::Result<RollResult> {
-        let mut total = self.flat_modifier;
-        let mut individual_rolls = Vec::new();
-        let mut critical = Critical::None;
-
-        for roll_plan in &self.rolls {
-            let roll_result = roll_plan.roll(rng)?;
-            total += roll_result.total;
-            individual_rolls.extend(roll_result.individual_rolls);
-
-            // If any roll is a critical success, the whole formula is a critical success.
-            // If any roll is a critical failure and there are no critical successes, it's a failure.
-            match (critical, roll_result.critical) {
-                (Critical::Success, _) => {}
-                (_, Critical::Success) => critical = Critical::Success,
-                (Critical::Failure, _) => {}
-                (_, Critical::Failure) => critical = Critical::Failure,
-                _ => {}
-            }
-        }
-
-        Ok(RollResult {
-            total,
-            individual_rolls,
-            critical,
-            roll_used: RollPlan {
-                num_dice: 0,
-                die_size: 0,
-                modifier: self.flat_modifier,
-                settings: RollSettings::default(),
-            },
-        })
-    }
-}
-
-impl From<RollPlan> for RollFormula {
-    fn from(plan: RollPlan) -> Self {
-        Self {
-            rolls: vec![plan],
-            flat_modifier: 0,
-        }
-    }
-}
-
-impl From<&str> for RollFormula {
-    fn from(value: &str) -> Self {
-        RollPlan::from(value).into()
     }
 }
 

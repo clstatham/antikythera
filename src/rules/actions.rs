@@ -60,28 +60,24 @@ impl Action {
         }
     }
 
-    pub fn pretty_print(
-        &self,
-        f: &mut impl std::fmt::Write,
-        state: &State,
-    ) -> std::fmt::Result {
+    pub fn pretty_print(&self, f: &mut impl std::fmt::Write, state: &State) -> std::fmt::Result {
         match self {
-            Action::Wait => write!(f, "Wait"),
+            Action::Wait => write!(f, "does nothing"),
             Action::UnarmedStrike(action) => {
-                write!(f, "Unarmed Strike at target ")?;
+                write!(f, "attacks ")?;
                 action.target.pretty_print(f, state)?;
+                write!(f, " with an unarmed strike")?;
                 Ok(())
             }
             Action::Attack(action) => {
-                write!(f, "Attack target ")?;
+                write!(f, "attacks ")?;
                 action.target.pretty_print(f, state)?;
-                write!(f, " with weapon ")?;
+                write!(f, " with their ")?;
                 action.weapon_used.pretty_print(f, state)?;
-
                 Ok(())
             }
             Action::CastSpell(action) => {
-                write!(f, "Cast spell {:?} on targets ", action.spell_used)?;
+                write!(f, "casts spell {:?} on ", action.spell_used)?;
                 for (i, target) in action.targets.iter().enumerate() {
                     if i > 0 {
                         write!(f, ", ")?;
@@ -91,22 +87,22 @@ impl Action {
                 Ok(())
             }
             Action::UseItem(action) => {
-                write!(f, "Use item {:?}", action.item_used)?;
+                write!(f, "uses item {:?}", action.item_used)?;
                 if let Some(target) = &action.target {
-                    write!(f, " on target ")?;
+                    write!(f, " on ")?;
                     target.pretty_print(f, state)?;
                 }
                 Ok(())
             }
-            Action::Dash => write!(f, "Dash"),
-            Action::Disengage => write!(f, "Disengage"),
+            Action::Dash => write!(f, "dashes"),
+            Action::Disengage => write!(f, "disengages"),
             Action::Dodge => write!(f, "Dodge"),
             Action::Help(action) => {
-                write!(f, "Help target ")?;
+                write!(f, "helps target ")?;
                 action.target.pretty_print(f, state)?;
                 Ok(())
             }
-            Action::Hide => write!(f, "Hide"),
+            Action::Hide => write!(f, "hides"),
         }
     }
 }
@@ -189,15 +185,7 @@ impl ActionEconomy {
                     anyhow::bail!("Bonus action already used this turn");
                 }
                 self.bonus_action_used = true;
-            } // ActionType::Reaction => {
-              //     if self.reaction_used {
-              //         anyhow::bail!("Reaction already used this turn");
-              //     }
-              //     self.reaction_used = true;
-              // }
-              // ActionType::FreeAction => {
-              //     self.free_actions_used += 1;
-              // }
+            }
         }
         Ok(())
     }
@@ -211,16 +199,10 @@ pub struct ActionTaken {
 }
 
 impl ActionTaken {
-    pub fn pretty_print(
-        &self,
-        f: &mut impl std::fmt::Write,
-        state: &State,
-    ) -> std::fmt::Result {
-        write!(f, "Actor ")?;
+    pub fn pretty_print(&self, f: &mut impl std::fmt::Write, state: &State) -> std::fmt::Result {
         self.actor.pretty_print(f, state)?;
-        write!(f, " takes action: ")?;
+        write!(f, " ")?;
         self.action.pretty_print(f, state)?;
-        write!(f, " as a {:?}", self.action_type)?;
         Ok(())
     }
 }

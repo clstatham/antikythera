@@ -40,7 +40,7 @@ pub enum Transition {
         stat: Stat,
         delta: i32,
     },
-    ActionUsed {
+    ActionEconomyUsed {
         target: ActorId,
         action_type: ActionEconomyUsage,
     },
@@ -49,7 +49,7 @@ pub enum Transition {
 impl Transition {
     pub fn emoji(&self) -> &'static str {
         match self {
-            Transition::ActionUsed { .. } => "⚔️",
+            Transition::ActionEconomyUsed { .. } => "⚔️",
             Transition::BeginCombat => "🎬",
             Transition::EndCombat => "🏁",
             Transition::InitiativeRoll { .. } => "🎲",
@@ -76,7 +76,8 @@ impl Transition {
     #[allow(clippy::match_like_matches_macro)]
     pub fn is_quiet(&self) -> bool {
         match self {
-            Transition::ActionUsed { .. } => true,
+            Transition::ActionEconomyUsed { .. } => true,
+            Transition::AdvanceInitiative => true,
             _ => false,
         }
     }
@@ -100,13 +101,14 @@ impl Transition {
                 if let Some(actor) = state.actors.get_mut(actor) {
                     actor.initiative = Some(*roll);
                 }
+
+                // recalculate initiative order
                 let mut initiatives = state
                     .actors
                     .iter()
                     .map(|(id, actor)| (*id, actor.initiative.unwrap_or(0)))
                     .collect::<Vec<(ActorId, i32)>>();
-                initiatives.sort_by(|a, b| b.1.cmp(&a.1));
-                initiatives.reverse();
+                initiatives.sort_by(|a, b| b.1.cmp(&a.1)); // descending order
                 state.initiative_order = initiatives.into_iter().map(|(id, _)| id).collect();
             }
             Transition::BeginTurn { actor } => {
@@ -141,7 +143,7 @@ impl Transition {
                     *actor.stats.get_mut(*stat) += *delta as u32;
                 }
             }
-            Transition::ActionUsed {
+            Transition::ActionEconomyUsed {
                 target,
                 action_type,
             } => {
@@ -157,7 +159,6 @@ impl Transition {
     pub fn pretty_print(&self, f: &mut impl std::fmt::Write, state: &State) -> std::fmt::Result {
         match self {
             Transition::InitiativeRoll { actor, roll } => {
-                write!(f, "Actor ")?;
                 actor.pretty_print(f, state)?;
                 write!(f, " rolls initiative: {}", roll)
             }
@@ -165,36 +166,42 @@ impl Transition {
             Transition::EndCombat => write!(f, "End Combat"),
             Transition::AdvanceInitiative => write!(f, "Advance Initiative"),
             Transition::BeginTurn { actor } => {
-                write!(f, "Begin turn for actor ")?;
-                actor.pretty_print(f, state)
+                actor.pretty_print(f, state)?;
+                write!(f, " begins their turn")
             }
             Transition::EndTurn { actor } => {
-                write!(f, "End turn for actor ")?;
-                actor.pretty_print(f, state)
+                actor.pretty_print(f, state)?;
+                write!(f, " ends their turn")
             }
             Transition::HealthModification { target, delta } => {
-                if *delta >= 0 {
-                    write!(f, "Heal actor ")?;
-                } else {
-                    write!(f, "Damage actor ")?;
-                }
                 target.pretty_print(f, state)?;
-                write!(f, " by {}", delta.abs())
+                write!(f, " takes {}", delta.abs())?;
+                if *delta >= 0 {
+                    write!(f, " healing")
+                } else {
+                    write!(f, " damage")
+                }
             }
             Transition::StatModification {
                 target,
                 stat,
                 delta,
             } => {
-                if *delta >= 0 {
-                    write!(f, "Increase {:?} of actor ", stat)?;
-                } else {
-                    write!(f, "Decrease {:?} of actor ", stat)?;
-                }
                 target.pretty_print(f, state)?;
-                write!(f, " by {}", delta.abs())
+                write!(f, "'s {:?} is ", stat)?;
+                if *delta >= 0 {
+                    write!(f, "increased by {}", delta)
+                } else {
+                    write!(f, "decreased by {}", delta.abs())
+                }
             }
-            Transition::ActionUsed { .. } => Ok(()),
+            Transition::ActionEconomyUsed {
+                action_type,
+                target,
+            } => {
+                target.pretty_print(f, state)?;
+                write!(f, " uses their {:?}", action_type)
+            }
         }
     }
 }

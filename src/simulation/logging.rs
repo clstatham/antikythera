@@ -78,11 +78,10 @@ impl LogEntry {
                 target,
                 weapon,
             } => {
-                write!(f, "Actor ")?;
                 attacker.pretty_print(f, state)?;
-                write!(f, " hits actor ")?;
+                write!(f, " hits ")?;
                 target.pretty_print(f, state)?;
-                write!(f, " with weapon ")?;
+                write!(f, " with their ")?;
                 weapon.pretty_print(f, state)?;
                 Ok(())
             }
@@ -91,28 +90,24 @@ impl LogEntry {
                 target,
                 weapon,
             } => {
-                write!(f, "Actor ")?;
                 attacker.pretty_print(f, state)?;
-                write!(f, " misses actor ")?;
+                write!(f, " misses  ")?;
                 target.pretty_print(f, state)?;
-                write!(f, " with weapon ")?;
+                write!(f, " with their ")?;
                 weapon.pretty_print(f, state)?;
                 Ok(())
             }
             LogEntry::ActorDowned { actor } => {
-                write!(f, "Actor ")?;
                 actor.pretty_print(f, state)?;
                 write!(f, " is downed")?;
                 Ok(())
             }
             LogEntry::ActorStabilized { actor } => {
-                write!(f, "Actor ")?;
                 actor.pretty_print(f, state)?;
                 write!(f, " is stabilized")?;
                 Ok(())
             }
             LogEntry::ActorKilled { actor } => {
-                write!(f, "Actor ")?;
                 actor.pretty_print(f, state)?;
                 write!(f, " is killed")?;
                 Ok(())
@@ -160,7 +155,7 @@ fn emoji_emoji_presentation(s: &str) -> String {
 }
 
 fn pad_cells(s: &str, field_cells: usize) -> String {
-    let w = UnicodeWidthStr::width(s);
+    let w = s.width();
     let pad = field_cells.saturating_sub(w);
     format!("{s}{}", " ".repeat(pad))
 }
