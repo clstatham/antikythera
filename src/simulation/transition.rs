@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    rules::{actions::ActionType, actor::ActorId, stats::Stat},
+    rules::{actions::ActionEconomyUsage, actor::ActorId, stats::Stat},
     simulation::state::SimulationState,
 };
 
@@ -29,10 +29,7 @@ pub enum Transition {
     },
     ActionUsed {
         target: ActorId,
-        action_type: ActionType,
-    },
-    ActionReset {
-        target: ActorId,
+        action_type: ActionEconomyUsage,
     },
 }
 
@@ -61,13 +58,40 @@ impl Transition {
                     actor.action_economy.use_action(*action_type)?;
                 }
             }
-            Transition::ActionReset { target } => {
-                if let Some(actor) = state.actors.get_mut(target) {
-                    actor.action_economy.reset();
-                }
-            }
         }
 
         Ok(())
+    }
+
+    pub fn pretty_print(
+        &self,
+        f: &mut impl std::fmt::Write,
+        state: &SimulationState,
+    ) -> std::fmt::Result {
+        match self {
+            Transition::HealthModification { target, delta } => {
+                if *delta >= 0 {
+                    write!(f, "Heal actor ")?;
+                } else {
+                    write!(f, "Damage actor ")?;
+                }
+                target.pretty_print(f, state)?;
+                write!(f, " by {}", delta.abs())
+            }
+            Transition::StatModification {
+                target,
+                stat,
+                delta,
+            } => {
+                if *delta >= 0 {
+                    write!(f, "Increase {:?} of actor ", stat)?;
+                } else {
+                    write!(f, "Decrease {:?} of actor ", stat)?;
+                }
+                target.pretty_print(f, state)?;
+                write!(f, " by {}", delta.abs())
+            }
+            Transition::ActionUsed { .. } => Ok(()),
+        }
     }
 }

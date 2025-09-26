@@ -34,7 +34,6 @@ pub enum LogEntry {
         attacker: ActorId,
         target: ActorId,
         weapon: ItemId,
-        damage: i32,
     },
 }
 
@@ -45,6 +44,13 @@ impl LogEntry {
         state: &SimulationState,
     ) -> std::fmt::Result {
         match self {
+            LogEntry::InitiativeRoll { actor, roll } => {
+                write!(f, "Actor ")?;
+                actor.pretty_print(f, state)?;
+                write!(f, " rolls for initiative: ")?;
+                roll.pretty_print(f)?;
+                Ok(())
+            }
             LogEntry::BeginTurn { actor } => {
                 write!(f, "Begin turn for actor ")?;
                 actor.pretty_print(f, state)?;
@@ -55,7 +61,7 @@ impl LogEntry {
                 actor.pretty_print(f, state)?;
                 Ok(())
             }
-            LogEntry::Transition(transition) => write!(f, "Transition: {:?}", transition),
+            LogEntry::Transition(transition) => transition.pretty_print(f, state),
             LogEntry::Roll(roll) => {
                 roll.pretty_print(f)?;
                 Ok(())
@@ -68,7 +74,6 @@ impl LogEntry {
                 attacker,
                 target,
                 weapon,
-                damage,
             } => {
                 write!(f, "Actor ")?;
                 attacker.pretty_print(f, state)?;
@@ -76,7 +81,6 @@ impl LogEntry {
                 target.pretty_print(f, state)?;
                 write!(f, " with weapon ")?;
                 weapon.pretty_print(f, state)?;
-                write!(f, " for {} damage", damage)?;
                 Ok(())
             }
             LogEntry::AttackMiss {
@@ -106,14 +110,10 @@ pub struct SimulationLog {
 
 impl SimulationLog {
     pub fn log(&mut self, entry: LogEntry, state: &SimulationState) {
-        if matches!(entry, LogEntry::Transition(_)) {
-            // Don't log transitions to info, they are too verbose
-        } else {
-            let mut buf = String::new();
-            entry.pretty_print(&mut buf, state).ok();
-            if !buf.is_empty() {
-                log::info!("{}", buf);
-            }
+        let mut buf = String::new();
+        entry.pretty_print(&mut buf, state).ok();
+        if !buf.is_empty() {
+            log::info!("{}", buf);
         }
 
         self.entries.push(entry);
@@ -123,5 +123,11 @@ impl SimulationLog {
         for entry in entries {
             self.log(entry, state);
         }
+    }
+
+    pub fn save(&self, path: &std::path::Path) -> anyhow::Result<()> {
+        let file = std::fs::File::create(path)?;
+        serde_json::to_writer_pretty(file, &self)?;
+        Ok(())
     }
 }

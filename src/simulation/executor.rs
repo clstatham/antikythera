@@ -1,5 +1,7 @@
+use std::collections::BTreeMap;
+
 use crate::{
-    rules::actions::ActionType,
+    rules::{actions::ActionEconomyUsage, actor::ActorId, dice::RollSettings},
     simulation::{
         action_evaluator::ActionEvaluator,
         logging::{LogEntry, SimulationLog},
@@ -28,6 +30,10 @@ impl SimulationExecutor {
         }
     }
 
+    pub fn save_log(&self, path: &std::path::Path) -> anyhow::Result<()> {
+        self.log.save(path)
+    }
+
     pub fn run(&mut self) -> anyhow::Result<()> {
         self.begin_combat()?;
 
@@ -38,12 +44,56 @@ impl SimulationExecutor {
         Ok(())
     }
 
+    pub fn log(&mut self, entry: LogEntry) {
+        self.log.log(entry, &self.state);
+    }
+
+    pub fn extend_log(&mut self, entries: impl IntoIterator<Item = LogEntry>) {
+        self.log.extend(entries, &self.state);
+    }
+
     pub fn begin_combat(&mut self) -> anyhow::Result<()> {
-        self.state.begin_combat(&mut self.roller)
+        self.state.turn = 1;
+        self.state.current_turn_index = Some(0);
+
+        // ROLL INITIATIVE!!!
+        let mut initiatives = BTreeMap::new();
+        for actor in self.state.actors.values_mut() {
+            let roll = actor.plan_initiative_roll(RollSettings::default());
+            let result = roll.roll(&mut self.roller)?;
+            actor.initiative = Some(result.total);
+            initiatives.insert(actor.id, result);
+        }
+
+        for (actor_id, roll) in &initiatives {
+            self.log.log(
+                LogEntry::InitiativeRoll {
+                    actor: *actor_id,
+                    roll: roll.clone(),
+                },
+                &self.state,
+            );
+        }
+
+        let mut initiatives = self
+            .state
+            .actors
+            .iter()
+            .map(|(id, actor)| (*id, actor.initiative.unwrap_or(0)))
+            .collect::<Vec<(ActorId, i32)>>();
+        initiatives.sort_by(|a, b| b.1.cmp(&a.1));
+        initiatives.reverse();
+        self.state.initiative_order = initiatives.into_iter().map(|(id, _)| id).collect();
+        Ok(())
     }
 
     pub fn end_combat(&mut self) -> anyhow::Result<()> {
-        self.state.end_combat();
+        self.state.turn = 0;
+        self.state.current_turn_index = None;
+        self.state.initiative_order.clear();
+        for actor in self.state.actors.values_mut() {
+            actor.initiative = None;
+        }
         Ok(())
     }
 
@@ -73,8 +123,8 @@ impl SimulationExecutor {
             anyhow::bail!("Current actor not found in simulation state");
         };
 
+        // dead actors skip their turn
         if current_actor.is_unconscious() || current_actor.is_dead() {
-            // Dead actors skip their turn
             return Ok(true);
         }
 
@@ -88,7 +138,7 @@ impl SimulationExecutor {
         let current_actor = self.state.get_actor_mut(current_actor_id).unwrap();
         current_actor.action_economy.reset();
 
-        for action_type in [ActionType::Action, ActionType::BonusAction] {
+        for action_type in [ActionEconomyUsage::Action, ActionEconomyUsage::BonusAction] {
             let action_taken = self.policy.take_action(
                 action_type,
                 current_actor_id,

@@ -28,6 +28,12 @@ impl ActionEvaluator {
             return Ok(logs);
         }
 
+        // the action was successfully taken at this point
+        logs.push(LogEntry::Transition(Transition::ActionUsed {
+            target: actor.id,
+            action_type: action.action_type,
+        }));
+
         logs.push(LogEntry::Action(action.clone()));
 
         match &action.action {
@@ -67,7 +73,6 @@ impl ActionEvaluator {
                         attacker: actor.id,
                         target: target.id,
                         weapon: ItemId(0), // Unarmed strike has no item ID
-                        damage: damage_result.total,
                     });
 
                     // apply damage to target
@@ -118,6 +123,12 @@ impl ActionEvaluator {
                 let attack_hits = attack_result.meets_dc(target.armor_class as i32);
 
                 if attack_hits {
+                    logs.push(LogEntry::AttackHit {
+                        attacker: actor.id,
+                        target: target.id,
+                        weapon: *weapon_used_id,
+                    });
+
                     let damage_roll = if attack_result.is_critical_success() {
                         weapon_used
                             .critical_damage
@@ -129,13 +140,6 @@ impl ActionEvaluator {
 
                     let damage_result = damage_roll.roll(rng)?;
                     logs.push(LogEntry::Roll(damage_result.clone()));
-
-                    logs.push(LogEntry::AttackHit {
-                        attacker: actor.id,
-                        target: target.id,
-                        weapon: *weapon_used_id,
-                        damage: damage_result.total,
-                    });
 
                     // apply damage to target
                     // todo: calculate resistances, vulnerabilities, temporary hit points, etc.
@@ -154,12 +158,6 @@ impl ActionEvaluator {
             action => todo!("Handle {:?} action", action),
         }
 
-        // the action was successfully taken at this point
-        logs.push(LogEntry::Transition(Transition::ActionUsed {
-            target: actor.id,
-            action_type: action.action_type,
-        }));
-
         Ok(logs)
     }
 }
@@ -167,7 +165,7 @@ impl ActionEvaluator {
 #[cfg(test)]
 mod tests {
     use crate::rules::{
-        actions::ActionType,
+        actions::ActionEconomyUsage,
         actor::Actor,
         dice::{Advantage, RollSettings},
         items::Item,
@@ -198,7 +196,7 @@ mod tests {
         // Create an attack action
         let attack_action = ActionTaken {
             actor: actor1_id,
-            action_type: ActionType::Action,
+            action_type: ActionEconomyUsage::Action,
             action: Action::Attack(AttackAction {
                 weapon_used: weapon.id,
                 target: actor2_id,

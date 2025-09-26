@@ -2,13 +2,9 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use serde::{Deserialize, Serialize};
 
-use crate::{
-    rules::{
-        actor::{Actor, ActorId},
-        dice::RollSettings,
-        items::{Item, ItemId, ItemType},
-    },
-    statistics::roller::Roller,
+use crate::rules::{
+    actor::{Actor, ActorId},
+    items::{Item, ItemId, ItemType},
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -105,37 +101,6 @@ impl SimulationState {
     pub fn are_enemies(&self, actor1: ActorId, actor2: ActorId) -> bool {
         !self.are_allies(actor1, actor2)
     }
-
-    pub fn begin_combat(&mut self, rng: &mut Roller) -> anyhow::Result<()> {
-        self.turn = 1;
-        self.current_turn_index = Some(0);
-
-        // ROLL INITIATIVE!!!
-        for actor in self.actors.values_mut() {
-            let roll = actor.plan_initiative_roll(RollSettings::default());
-            let result = roll.roll(rng)?;
-            actor.initiative = Some(result.total);
-        }
-
-        let mut initiatives = self
-            .actors
-            .iter()
-            .map(|(id, actor)| (*id, actor.initiative.unwrap_or(0)))
-            .collect::<Vec<(ActorId, i32)>>();
-        initiatives.sort_by(|a, b| b.1.cmp(&a.1));
-        self.initiative_order = initiatives.into_iter().map(|(id, _)| id).collect();
-        Ok(())
-    }
-
-    pub fn end_combat(&mut self) {
-        self.turn = 0;
-        self.current_turn_index = None;
-        self.initiative_order.clear();
-        for actor in self.actors.values_mut() {
-            actor.initiative = None;
-        }
-    }
-
     pub fn is_combat_over(&self) -> bool {
         // combat is over when only one allied group remains
         let mut remaining_groups = 0;

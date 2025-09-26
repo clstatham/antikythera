@@ -80,5 +80,7 @@ fn main() -> anyhow::Result<()> {
     let mut executor = SimulationExecutor::new(roller, state, policy);
     executor.run()?;
 
+    executor.save_log(std::path::Path::new("target/simulation_log.json"))?;
+
     Ok(())
 }

@@ -1,4 +1,3 @@
-use derive_more::{From, Into};
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -12,10 +11,19 @@ use crate::{
     simulation::state::SimulationState,
 };
 
-#[derive(
-    Debug, Clone, Copy, PartialEq, PartialOrd, Ord, Eq, Hash, From, Into, Serialize, Deserialize,
-)]
-pub struct ActionId(pub u32);
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum ActionType {
+    Wait,
+    UnarmedStrike,
+    Attack,
+    CastSpell,
+    UseItem,
+    Dash,
+    Disengage,
+    Dodge,
+    Help,
+    Hide,
+}
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[non_exhaustive]
@@ -37,6 +45,21 @@ pub enum Action {
 }
 
 impl Action {
+    pub fn action_type(&self) -> ActionType {
+        match self {
+            Action::Wait => ActionType::Wait,
+            Action::UnarmedStrike(_) => ActionType::UnarmedStrike,
+            Action::Attack(_) => ActionType::Attack,
+            Action::CastSpell(_) => ActionType::CastSpell,
+            Action::UseItem(_) => ActionType::UseItem,
+            Action::Dash => ActionType::Dash,
+            Action::Disengage => ActionType::Disengage,
+            Action::Dodge => ActionType::Dodge,
+            Action::Help(_) => ActionType::Help,
+            Action::Hide => ActionType::Hide,
+        }
+    }
+
     pub fn pretty_print(
         &self,
         f: &mut impl std::fmt::Write,
@@ -121,7 +144,7 @@ pub struct HelpAction {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub enum ActionType {
+pub enum ActionEconomyUsage {
     Action,
     BonusAction,
 }
@@ -144,24 +167,24 @@ impl ActionEconomy {
         self.movement_used = 0;
     }
 
-    pub fn can_take_action(&self, action_type: ActionType) -> bool {
+    pub fn can_take_action(&self, action_type: ActionEconomyUsage) -> bool {
         match action_type {
-            ActionType::Action => !self.action_used,
-            ActionType::BonusAction => !self.bonus_action_used,
+            ActionEconomyUsage::Action => !self.action_used,
+            ActionEconomyUsage::BonusAction => !self.bonus_action_used,
             // ActionType::Reaction => !self.reaction_used,
             // ActionType::FreeAction => true,
         }
     }
 
-    pub fn use_action(&mut self, action_type: ActionType) -> anyhow::Result<()> {
+    pub fn use_action(&mut self, action_type: ActionEconomyUsage) -> anyhow::Result<()> {
         match action_type {
-            ActionType::Action => {
+            ActionEconomyUsage::Action => {
                 if self.action_used {
                     anyhow::bail!("Action already used this turn");
                 }
                 self.action_used = true;
             }
-            ActionType::BonusAction => {
+            ActionEconomyUsage::BonusAction => {
                 if self.bonus_action_used {
                     anyhow::bail!("Bonus action already used this turn");
                 }
@@ -184,7 +207,7 @@ impl ActionEconomy {
 pub struct ActionTaken {
     pub actor: ActorId,
     pub action: Action,
-    pub action_type: ActionType,
+    pub action_type: ActionEconomyUsage,
 }
 
 impl ActionTaken {

@@ -2,7 +2,7 @@ use rand::Rng;
 
 use crate::{
     rules::{
-        actions::{Action, ActionTaken, ActionType, AttackAction, UnarmedStrikeAction},
+        actions::{Action, ActionEconomyUsage, ActionTaken, AttackAction, UnarmedStrikeAction},
         actor::ActorId,
         items::ItemType,
     },
@@ -13,7 +13,7 @@ use crate::{
 pub trait Policy: 'static {
     fn take_action(
         &self,
-        action_type: ActionType,
+        action_type: ActionEconomyUsage,
         actor: ActorId,
         state: &SimulationState,
         rng: &mut Roller,
@@ -26,7 +26,7 @@ pub struct NoOpPolicy;
 impl Policy for NoOpPolicy {
     fn take_action(
         &self,
-        action_type: ActionType,
+        action_type: ActionEconomyUsage,
         actor: ActorId,
         _state: &SimulationState,
         _rng: &mut Roller,
@@ -78,12 +78,12 @@ impl RandomPolicy {
 impl Policy for RandomPolicy {
     fn take_action(
         &self,
-        action_type: ActionType,
+        action_type: ActionEconomyUsage,
         actor: ActorId,
         state: &SimulationState,
         rng: &mut Roller,
     ) -> anyhow::Result<ActionTaken> {
-        if action_type != ActionType::Action {
+        if action_type != ActionEconomyUsage::Action {
             return Ok(ActionTaken {
                 actor,
                 action: Action::Wait,
