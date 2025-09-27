@@ -353,30 +353,31 @@ impl StateEditorApp {
         (remove, clone)
     }
 
+    // NOTE: These two functions NO LONGER create their own ScrollAreas.
+    // The scroll is now provided by the pane that contains them, so they
+    // can expand naturally to the full height of the strip cell.
     fn actors_list_ui(ui: &mut egui::Ui, state: &mut State, ui_state: &mut StateEditorUiState) {
         egui::CollapsingHeader::new("Actors")
             .default_open(false)
             .show(ui, |ui| {
-                egui::ScrollArea::vertical().show(ui, |ui| {
-                    if ui.button("Add Actor").clicked() {
-                        let new_actor = ActorBuilder::new("New Actor").build();
-                        state.add_actor(new_actor);
-                    }
+                if ui.button("Add Actor").clicked() {
+                    let new_actor = ActorBuilder::new("New Actor").build();
+                    state.add_actor(new_actor);
+                }
 
-                    let actors: Vec<ActorId> = state.actors.keys().cloned().collect();
-                    for actor_id in actors {
-                        let (remove, clone) = Self::actor_ui(ui, actor_id, state, ui_state);
-                        if remove {
-                            state.actors.remove(&actor_id);
-                        }
-                        if clone && let Some(actor) = state.actors.get(&actor_id) {
-                            let mut cloned_actor = actor.clone();
-                            let new_id = state.next_actor_id;
-                            cloned_actor.id = ActorId(new_id);
-                            state.add_actor(cloned_actor);
-                        }
+                let actors: Vec<ActorId> = state.actors.keys().cloned().collect();
+                for actor_id in actors {
+                    let (remove, clone) = Self::actor_ui(ui, actor_id, state, ui_state);
+                    if remove {
+                        state.actors.remove(&actor_id);
                     }
-                }); // end ScrollArea for actors
+                    if clone && let Some(actor) = state.actors.get(&actor_id) {
+                        let mut cloned_actor = actor.clone();
+                        let new_id = state.next_actor_id;
+                        cloned_actor.id = ActorId(new_id);
+                        state.add_actor(cloned_actor);
+                    }
+                }
             }); // end CollapsingHeader for Actors
     }
 
@@ -527,7 +528,7 @@ impl StateEditorApp {
             }); // end CollapsingHeader for item
     }
 
-    fn items_list_ui(ui: &mut egui::Ui, state: &mut State, ui_state: &mut StateEditorUiState) {
+    fn items_list_ui(ui: &mut egui::Ui, state: &mut State, _ui_state: &mut StateEditorUiState) {
         egui::CollapsingHeader::new("Items")
             .default_open(false)
             .show(ui, |ui| {
@@ -548,12 +549,10 @@ impl StateEditorApp {
                     }
                 });
 
-                egui::ScrollArea::vertical().show(ui, |ui| {
-                    let items: Vec<ItemId> = state.items.keys().cloned().collect();
-                    for item_id in items {
-                        Self::item_ui(ui, item_id, state, ui_state);
-                    }
-                }); // end ScrollArea for items
+                let items: Vec<ItemId> = state.items.keys().cloned().collect();
+                for item_id in items {
+                    Self::item_ui(ui, item_id, state, _ui_state);
+                }
             }); // end CollapsingHeader for Items
     }
 
@@ -566,10 +565,46 @@ impl StateEditorApp {
         ui.label(format!("Items: {}", state.items.len()));
         ui.separator();
 
-        egui::ScrollArea::vertical().show(ui, |ui| {
-            Self::actors_list_ui(ui, state, &mut self.ui_state);
-            ui.separator();
-            Self::items_list_ui(ui, state, &mut self.ui_state);
-        }); // end ScrollArea for state
+        // Fill all remaining area below the stats/separator with a 2-col strip.
+        egui::CentralPanel::default().show_inside(ui, |ui| {
+            egui_extras::StripBuilder::new(ui)
+                .size(egui_extras::Size::remainder())
+                .size(egui_extras::Size::remainder())
+                .horizontal(|mut strip| {
+                    // Left pane (Actors)
+                    strip.cell(|ui| {
+                        let avail = ui.available_size();
+                        ui.allocate_ui_with_layout(
+                            avail,
+                            egui::Layout::top_down(egui::Align::Min),
+                            |ui| {
+                                egui::ScrollArea::vertical().auto_shrink([false; 2]).show(
+                                    ui,
+                                    |ui| {
+                                        Self::actors_list_ui(ui, state, &mut self.ui_state);
+                                    },
+                                );
+                            },
+                        );
+                    });
+
+                    // Right pane (Items)
+                    strip.cell(|ui| {
+                        let avail = ui.available_size();
+                        ui.allocate_ui_with_layout(
+                            avail,
+                            egui::Layout::top_down(egui::Align::Min),
+                            |ui| {
+                                egui::ScrollArea::vertical().auto_shrink([false; 2]).show(
+                                    ui,
+                                    |ui| {
+                                        Self::items_list_ui(ui, state, &mut self.ui_state);
+                                    },
+                                );
+                            },
+                        );
+                    });
+                });
+        });
     }
 }
