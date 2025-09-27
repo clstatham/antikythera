@@ -28,12 +28,7 @@ pub mod prelude {
             state::State,
             transition::Transition,
         },
-        statistics::{
-            integration::Integrator,
-            query::*,
-            roller::Roller,
-            state_tree::{StateTree, StateTreeStats},
-        },
+        statistics::{integration::Integrator, query::*, roller::Roller, state_tree::StateTree},
     };
 }
 
@@ -112,23 +107,20 @@ mod tests {
         let mut integrator = Integrator::new(100, roller, state);
         let state_tree = integrator.run()?;
 
-        let stats = state_tree.compute_statistics();
-        stats.print_summary();
-
         let query = OutcomeConditionProbability::new(move |state: &State| {
             state.get_actor(hero).map(|a| a.is_alive()).unwrap()
         });
-        let prob = query.query(&state_tree, &stats)?;
+        let prob = query.query(&state_tree)?;
         println!("Probability that hero is alive: {:.2}%", prob * 100.0);
         let query = OutcomeConditionProbability::new(move |state: &State| {
             state.get_actor(goblin).map(|a| a.is_alive()).unwrap()
         });
-        let prob = query.query(&state_tree, &stats)?;
+        let prob = query.query(&state_tree)?;
         println!("Probability that goblin 1 is alive: {:.2}%", prob * 100.0);
         let query = OutcomeConditionProbability::new(move |state: &State| {
             state.get_actor(goblin2).map(|a| a.is_alive()).unwrap()
         });
-        let prob = query.query(&state_tree, &stats)?;
+        let prob = query.query(&state_tree)?;
         println!("Probability that goblin 2 is alive: {:.2}%", prob * 100.0);
 
         Ok(())

@@ -1,8 +1,7 @@
 use std::path::PathBuf;
 
-use antikythera::{prelude::*, statistics::state_tree::StateTreeStats};
+use antikythera::prelude::*;
 use clap::Parser;
-use serde::Serialize;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -26,14 +25,6 @@ struct Args {
     /// Output file path
     #[arg(short, long, default_value = "antikythera-statistics.json")]
     output: PathBuf,
-}
-
-#[derive(Debug, Serialize)]
-pub struct Statistics {
-    pub initial_state: State,
-    pub total_combats: usize,
-    pub state_tree: StateTree,
-    pub state_tree_stats: StateTreeStats,
 }
 
 pub fn demo_state() -> State {
@@ -132,20 +123,10 @@ fn main() -> anyhow::Result<()> {
         integrator.combats_per_second()
     );
 
-    let total_combats = integrator.combats_run();
-    let state_tree_stats = state_tree.compute_statistics();
-
-    let stats = Statistics {
-        initial_state,
-        total_combats,
-        state_tree,
-        state_tree_stats,
-    };
-
     let stats_file = std::fs::File::create(&args.output)?;
     let writer = std::io::BufWriter::new(stats_file);
-    serde_json::to_writer(writer, &stats)?;
-    log::info!("Statistics written to {}", args.output.display());
+    serde_json::to_writer(writer, &state_tree)?;
+    log::info!("State tree written to {}", args.output.display());
 
     Ok(())
 }

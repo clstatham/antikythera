@@ -1,6 +1,7 @@
+use antikythera::prelude::*;
 use eframe::egui;
 
-use crate::app::{Statistics, analysis::scripting::ScriptInterface};
+use crate::app::analysis::scripting::ScriptInterface;
 
 pub mod scripting;
 
@@ -11,7 +12,7 @@ pub struct Metric {
 
 #[derive(Default)]
 pub struct AnalysisApp {
-    pub stats: Option<Statistics>,
+    pub stats: Option<StateTree>,
     metrics: Vec<Metric>,
     script_interface: ScriptInterface,
 }
@@ -31,7 +32,7 @@ impl AnalysisApp {
                 .pick_file()
         {
             match std::fs::read_to_string(&path)
-                .and_then(|data| serde_json::from_str::<Statistics>(&data).map_err(|e| e.into()))
+                .and_then(|data| serde_json::from_str::<StateTree>(&data).map_err(|e| e.into()))
             {
                 Ok(stats) => {
                     self.stats = Some(stats);
@@ -47,13 +48,9 @@ impl AnalysisApp {
         }
 
         if let Some(stats) = &self.stats {
-            ui.separator();
-
             ui.label(format!(
-                "Results loaded: {} states, {} transitions, {} combats",
-                stats.state_tree.graph.node_count(),
-                stats.state_tree.graph.edge_count(),
-                stats.total_combats,
+                "Loaded state tree with {} nodes",
+                stats.graph.node_count()
             ));
 
             ui.separator();

@@ -3,8 +3,6 @@ use std::sync::mpsc;
 use antikythera::prelude::*;
 use eframe::egui;
 
-use crate::app::Statistics;
-
 #[derive(Default)]
 pub struct SimulationApp {
     pub state: Option<State>,
@@ -12,7 +10,7 @@ pub struct SimulationApp {
     progress: f64,
     progress_rx: Option<mpsc::Receiver<f64>>,
     result_rx: Option<mpsc::Receiver<StateTree>>,
-    pub stats: Option<Statistics>,
+    pub stats: Option<StateTree>,
 }
 
 impl SimulationApp {
@@ -95,15 +93,8 @@ impl SimulationApp {
             // check for results
             if let Some(result_rx) = &self.result_rx {
                 if let Ok(state_tree) = result_rx.try_recv() {
-                    log::info!("Simulation completed, calculating statistics...");
-                    let stats = Statistics {
-                        initial_state: self.state.clone().unwrap_or_default(),
-                        total_combats: self.min_combats,
-                        state_tree: state_tree.clone(),
-                        state_tree_stats: state_tree.compute_statistics(),
-                    };
-                    log::info!("Statistics calculated.");
-                    self.stats = Some(stats);
+                    log::info!("Simulation completed.");
+                    self.stats = Some(state_tree);
                     self.progress_rx = None;
                     self.result_rx = None;
                 } else {
@@ -113,10 +104,11 @@ impl SimulationApp {
         }
 
         if let Some(results) = &self.stats {
+            ui.separator();
             ui.label(format!(
-                "Simulation completed with {} states and {} transitions explored.",
-                results.state_tree.graph.node_count(),
-                results.state_tree.graph.edge_count()
+                "Simulation Results: {} states, {} transitions",
+                results.graph.node_count(),
+                results.graph.edge_count()
             ));
 
             if ui.button("Save Results").clicked()

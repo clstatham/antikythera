@@ -1,14 +1,11 @@
 use antikythera::prelude::*;
 use eframe::egui;
 use mlua::prelude::*;
-use petgraph::prelude::*;
-
-use crate::app::Statistics;
 
 pub struct ScriptInterface {
     lua: Lua,
     query: String,
-    run_on_outcomes_only: bool,
+    externals_only: bool,
     script_error: Option<String>,
 }
 
@@ -27,51 +24,47 @@ impl ScriptInterface {
     return state.turn > 10
 end"#,
             ),
-            run_on_outcomes_only: true,
+            externals_only: true,
             script_error: None,
         }
     }
 
     pub fn run_outcome_probability_query(
         &self,
-        statistics: &Statistics,
+        state_tree: &StateTree,
         query: &str,
-        run_on_outcomes_only: bool,
+        externals_only: bool,
     ) -> anyhow::Result<f64> {
         let query = ScriptProbabilityQuery {
             lua: &self.lua,
             condition: query.to_string(),
-            run_on_outcomes_only,
+            externals_only,
         };
-        let result = query.query(&statistics.state_tree, &statistics.state_tree_stats)?;
+        let result = query.query(state_tree)?;
         Ok(result)
     }
 
     pub fn ui(
         &mut self,
         ui: &mut egui::Ui,
-        stats: &Option<Statistics>,
+        state_tree: &Option<StateTree>,
         metrics: &mut Vec<super::Metric>,
     ) {
         ui.label(
             "Enter a Lua function that takes a state and returns true or false. The query will compute the probability of the function returning true.",
         );
         ui.add(egui::TextEdit::multiline(&mut self.query).code_editor());
-        ui.checkbox(&mut self.run_on_outcomes_only, "Run on outcomes only");
+        ui.checkbox(&mut self.externals_only, "Run on outcomes only");
         if ui.button("Run Query").clicked()
-            && let Some(statistics) = stats
+            && let Some(state_tree) = state_tree
         {
-            match self.run_outcome_probability_query(
-                statistics,
-                &self.query,
-                self.run_on_outcomes_only,
-            ) {
+            match self.run_outcome_probability_query(state_tree, &self.query, self.externals_only) {
                 Ok(probability) => {
                     metrics.push(super::Metric {
-                        query_name: if self.run_on_outcomes_only {
-                            format!("Outcome Condition Probability of:\n{}", self.query)
+                        query_name: if self.externals_only {
+                            format!("Terminal-State Probability of:\n{}", self.query)
                         } else {
-                            format!("State Condition Probability of:\n{}", self.query)
+                            format!("State Probability of:\n{}", self.query)
                         },
                         result: format!("{:.4}%", probability * 100.0),
                     });
@@ -93,17 +86,13 @@ end"#,
 pub struct ScriptProbabilityQuery<'a> {
     lua: &'a Lua,
     pub condition: String,
-    pub run_on_outcomes_only: bool,
+    pub externals_only: bool,
 }
 
 impl Query for ScriptProbabilityQuery<'_> {
     type Output = f64;
 
-    fn query(
-        &self,
-        state_tree: &StateTree,
-        _statistics: &StateTreeStats,
-    ) -> anyhow::Result<Self::Output> {
+    fn query(&self, state_tree: &StateTree) -> anyhow::Result<Self::Output> {
         let mut total_states = 0;
         let mut count = 0;
         self.lua.load(&self.condition).exec()?;
@@ -112,7 +101,7 @@ impl Query for ScriptProbabilityQuery<'_> {
 
         let mut error = None;
 
-        state_tree.visit_states(self.run_on_outcomes_only, |state, hits| {
+        state_tree.visit_states(self.externals_only, |state, hits| {
             let lua_state = match self.lua.create_userdata(LuaState(state.clone())) {
                 Ok(ud) => ud,
                 Err(e) => {

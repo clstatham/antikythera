@@ -1,6 +1,5 @@
 use antikythera::prelude::*;
 use eframe::egui;
-use serde::{Deserialize, Serialize};
 
 pub mod analysis;
 pub mod simulation;
@@ -15,19 +14,11 @@ pub enum AppMode {
     Analysis,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct Statistics {
-    pub initial_state: State,
-    pub total_combats: usize,
-    pub state_tree: StateTree,
-    pub state_tree_stats: StateTreeStats,
-}
-
 #[derive(Default)]
 pub struct App {
     pub mode: AppMode,
     pub state: Option<State>,
-    pub stats: Option<Statistics>,
+    pub stats: Option<StateTree>,
     pub state_editor_app: state_editor::StateEditorApp,
     pub simulation_app: simulation::SimulationApp,
     pub analysis_app: analysis::AnalysisApp,
