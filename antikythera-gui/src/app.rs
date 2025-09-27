@@ -120,6 +120,21 @@ impl App {
 
         self.mode = new_mode;
     }
+
+    fn with_state<F, R>(&self, f: F) -> R
+    where
+        F: FnOnce(&State) -> R,
+    {
+        if let Some(state) = &self.state {
+            f(state)
+        } else if let Some(state) = &self.state_editor_app.state {
+            f(state)
+        } else if let Some(state) = &self.simulation_app.state {
+            f(state)
+        } else {
+            unreachable!()
+        }
+    }
 }
 
 impl eframe::App for App {
@@ -127,7 +142,7 @@ impl eframe::App for App {
         self.ui(ctx);
 
         if ctx.input(|r| r.viewport().close_requested())
-            && self.state_editor_app.has_unsaved_changes()
+            && self.with_state(|state| self.state_editor_app.has_unsaved_changes(state))
         {
             let should_proceed = unsaved_changes_dialog();
             if should_proceed {

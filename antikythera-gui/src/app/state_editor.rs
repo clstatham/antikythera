@@ -17,12 +17,11 @@ pub struct StateEditorApp {
 }
 
 impl StateEditorApp {
-    pub fn has_unsaved_changes(&self) -> bool {
-        match (&self.state, &self.last_saved_state) {
-            (Some(current), Some(saved)) => current != saved,
-            (Some(_), None) => true,
-            (None, Some(_)) => false,
-            (None, None) => false,
+    pub fn has_unsaved_changes(&self, state: &State) -> bool {
+        if let Some(last_saved) = &self.last_saved_state {
+            last_saved != state
+        } else {
+            true
         }
     }
 
@@ -35,19 +34,23 @@ impl StateEditorApp {
 
         ui.horizontal(|ui| {
             if ui.button("New State").clicked() {
-                let should_proceed = if self.has_unsaved_changes() {
+                let should_proceed = if let Some(state) = &self.state
+                    && self.has_unsaved_changes(state)
+                {
                     unsaved_changes_dialog()
                 } else {
                     true
                 };
                 if should_proceed {
                     self.state = Some(State::new());
-                    self.last_saved_state = None;
+                    self.last_saved_state = self.state.clone();
                 }
             }
 
             if ui.button("Load State").clicked() {
-                let should_proceed = if self.has_unsaved_changes() {
+                let should_proceed = if let Some(state) = &self.state
+                    && self.has_unsaved_changes(state)
+                {
                     unsaved_changes_dialog()
                 } else {
                     true
@@ -100,6 +103,7 @@ impl StateEditorApp {
         let mut clone = false;
 
         egui::CollapsingHeader::new(format!("{}: {}", actor.id.0, actor.name))
+            .id_salt(actor.id.0)
             .default_open(false)
             .show(ui, |ui| {
                 ui.horizontal(|ui| {
@@ -388,6 +392,7 @@ impl StateEditorApp {
         };
 
         egui::CollapsingHeader::new(format!("{}: {}", item.id.0, item.name))
+            .id_salt(item.id.0)
             .default_open(false)
             .show(ui, |ui| {
                 ui.horizontal(|ui| {
