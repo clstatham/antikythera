@@ -69,14 +69,13 @@ impl Query for OutcomeConditionProbability {
         let mut condition_hits = 0u64;
         let mut total_outgoing_hits = 0u64;
 
-        for node_index in state_tree.graph.externals(Outgoing) {
-            let node = &state_tree.graph[node_index];
-            total_outgoing_hits += node.hits.get();
-            let state = state_tree.resolve_state(node_index).unwrap();
-            if (self.condition)(&state) {
-                condition_hits += node.hits.get();
+        state_tree.visit_states(true, |state, hits| {
+            if (self.condition)(state) {
+                condition_hits += hits;
             }
-        }
+            total_outgoing_hits += hits;
+            true
+        });
 
         if total_outgoing_hits > 0 {
             Ok(condition_hits as f64 / total_outgoing_hits as f64)
