@@ -1,12 +1,7 @@
-use std::{
-    collections::VecDeque,
-    fmt::Debug,
-    hash::{Hash, Hasher},
-    num::NonZeroU64,
-};
+use std::{collections::VecDeque, fmt::Debug, num::NonZeroU64};
 
 use petgraph::prelude::*;
-use rustc_hash::{FxHashMap, FxHashSet, FxHasher};
+use rustc_hash::{FxHashMap, FxHashSet};
 use serde::{Deserialize, Serialize};
 
 use crate::simulation::{state::State, transition::Transition};
@@ -14,18 +9,13 @@ use crate::simulation::{state::State, transition::Transition};
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Node {
     pub state: Box<State>, // Boxed to reduce size
-    pub state_hash: u64,
     pub hits: NonZeroU64,
 }
 
 impl Node {
     pub fn new(state: State) -> Self {
-        let mut hasher = FxHasher::default();
-        state.hash(&mut hasher);
-        let state_hash = hasher.finish();
         Self {
             state: Box::new(state),
-            state_hash,
             hits: NonZeroU64::MIN, // Start with 1 hit
         }
     }
@@ -33,7 +23,7 @@ impl Node {
 
 impl PartialEq for Node {
     fn eq(&self, other: &Self) -> bool {
-        self.state_hash == other.state_hash
+        self.state == other.state
     }
 }
 
@@ -49,25 +39,30 @@ pub struct StateTree {
     pub root: NodeIndex,
     pub total_node_hits: u64,
     pub total_edge_hits: u64,
+    #[serde(skip)]
+    state_cache: FxHashMap<State, NodeIndex>,
 }
 
 impl StateTree {
     pub fn new(initial_state: State) -> Self {
-        let initial_node = Node::new(initial_state);
+        let initial_node = Node::new(initial_state.clone());
         let mut graph = DiGraph::new();
         let root = graph.add_node(initial_node);
+        let mut state_cache = FxHashMap::default();
+        state_cache.insert(initial_state, root);
         Self {
             graph,
             root,
             total_node_hits: 0,
             total_edge_hits: 0,
+            state_cache,
         }
     }
 
     pub fn add_node(&mut self, state: State) -> NodeIndex {
         let node = Node::new(state);
         // Check if the node already exists
-        if let Some(existing_index) = self.graph.node_indices().find(|&i| self.graph[i] == node) {
+        if let Some(&existing_index) = self.state_cache.get(&node.state) {
             // Increment hits if it exists
             if let Some(existing_node) = self.graph.node_weight_mut(existing_index) {
                 existing_node.hits = existing_node.hits.saturating_add(1);

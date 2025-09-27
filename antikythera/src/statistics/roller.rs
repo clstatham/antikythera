@@ -1,6 +1,6 @@
 use rand::{Rng, SeedableRng, rngs::StdRng};
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct Roller {
     rng: StdRng,
 }
@@ -9,6 +9,15 @@ impl Roller {
     #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
         let rng = StdRng::from_os_rng();
+        Roller { rng }
+    }
+
+    /// Creates a new `Roller` instance with a different random seed.
+    /// Useful for creating independent random number generators in multi-threaded contexts.
+    pub fn fork(&mut self) -> Self {
+        let mut seed = [0u8; 32];
+        self.rng.fill(&mut seed);
+        let rng = StdRng::from_seed(seed);
         Roller { rng }
     }
 

@@ -4,3 +4,7 @@ members = [
     "antikythera",
     "antikythera-cli",
 ]
+
+
+[profile.release]
+debug = true

@@ -13,7 +13,7 @@ use crate::{
     utils::ProtectedCell,
 };
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct Executor {
     pub roller: Roller,
     pub state: ProtectedCell<State>,

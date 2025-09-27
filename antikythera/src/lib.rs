@@ -4,6 +4,31 @@ pub mod simulation;
 pub mod statistics;
 pub mod utils;
 
+pub mod prelude {
+    pub use crate::{
+        rules::{
+            actions::ActionEconomyUsage,
+            actor::{Actor, ActorBuilder, ActorId},
+            damage::DamageType,
+            dice::{RollPlan, RollResult, RollSettings},
+            items::{Item, ItemId, ItemType, Weapon, WeaponBuilder, WeaponProficiency, WeaponType},
+            saves::SavingThrow,
+            skills::{Skill, SkillProficiency},
+            spells::Spell,
+            stats::Stat,
+        },
+        simulation::{
+            action_evaluator::ActionEvaluator,
+            executor::Executor,
+            logging::{LogEntry, SimulationLog},
+            policy::{Policy, RandomPolicy},
+            state::State,
+            transition::Transition,
+        },
+        statistics::{integration::Integrator, query::*, roller::Roller, state_tree::StateTree},
+    };
+}
+
 #[cfg(test)]
 mod tests {
     use crate::{
@@ -81,25 +106,25 @@ mod tests {
 
         let roller = Roller::new();
         let mut integrator = Integrator::new(100, roller, state);
-        integrator.run()?;
+        let state_tree = integrator.run()?;
 
-        let stats = integrator.compute_statistics();
+        let stats = state_tree.compute_statistics();
         stats.print_summary();
 
         let query = OutcomeConditionProbability::new(move |state: &State| {
             state.get_actor(hero).map(|a| a.is_alive()).unwrap()
         });
-        let prob = query.query(integrator.state_tree(), &stats)?;
+        let prob = query.query(&state_tree, &stats)?;
         println!("Probability that hero is alive: {:.2}%", prob * 100.0);
         let query = OutcomeConditionProbability::new(move |state: &State| {
             state.get_actor(goblin).map(|a| a.is_alive()).unwrap()
         });
-        let prob = query.query(integrator.state_tree(), &stats)?;
+        let prob = query.query(&state_tree, &stats)?;
         println!("Probability that goblin 1 is alive: {:.2}%", prob * 100.0);
         let query = OutcomeConditionProbability::new(move |state: &State| {
             state.get_actor(goblin2).map(|a| a.is_alive()).unwrap()
         });
-        let prob = query.query(integrator.state_tree(), &stats)?;
+        let prob = query.query(&state_tree, &stats)?;
         println!("Probability that goblin 2 is alive: {:.2}%", prob * 100.0);
 
         Ok(())

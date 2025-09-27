@@ -159,7 +159,7 @@ impl SimulationLog {
             buf.push(' ');
 
             entry.pretty_print(&mut buf, state).ok();
-            log::info!("{}", buf);
+            log::trace!("{}", buf);
         }
 
         self.entries.push(entry);
