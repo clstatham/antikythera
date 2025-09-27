@@ -6,16 +6,28 @@ use serde::{Deserialize, Serialize};
 
 use crate::simulation::{state::State, transition::Transition};
 
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, Hash, PartialEq, Eq, PartialOrd, Ord)]
+pub struct StateHash(u64);
+
+impl StateHash {
+    pub fn hash_state(state: &State) -> Self {
+        use std::hash::{Hash, Hasher};
+        let mut hasher = rustc_hash::FxHasher::default();
+        state.hash(&mut hasher);
+        StateHash(hasher.finish())
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Node {
-    pub state: Box<State>, // Boxed to reduce size
+    pub state_hash: StateHash,
     pub hits: NonZeroU64,
 }
 
 impl Node {
-    pub fn new(state: State) -> Self {
+    pub fn new(state_hash: StateHash) -> Self {
         Self {
-            state: Box::new(state),
+            state_hash,
             hits: NonZeroU64::MIN, // Start with 1 hit
         }
     }
@@ -23,7 +35,7 @@ impl Node {
 
 impl PartialEq for Node {
     fn eq(&self, other: &Self) -> bool {
-        self.state == other.state
+        self.state_hash == other.state_hash
     }
 }
 
@@ -35,22 +47,25 @@ pub struct Edge {
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct StateTree {
+    pub initial_state: State,
     pub graph: DiGraph<Node, Edge>,
     pub root: NodeIndex,
     pub total_node_hits: u64,
     pub total_edge_hits: u64,
     #[serde(skip)]
-    state_cache: FxHashMap<State, NodeIndex>,
+    state_cache: FxHashMap<StateHash, NodeIndex>,
 }
 
 impl StateTree {
     pub fn new(initial_state: State) -> Self {
-        let initial_node = Node::new(initial_state.clone());
+        let initial_state_hash = StateHash::hash_state(&initial_state);
+        let initial_node = Node::new(initial_state_hash);
         let mut graph = DiGraph::new();
         let root = graph.add_node(initial_node);
         let mut state_cache = FxHashMap::default();
-        state_cache.insert(initial_state, root);
+        state_cache.insert(initial_state_hash, root);
         Self {
+            initial_state,
             graph,
             root,
             total_node_hits: 0,
@@ -61,7 +76,8 @@ impl StateTree {
 
     pub fn add_node(&mut self, state: &State) -> NodeIndex {
         // Check if the node already exists
-        if let Some(&existing_index) = self.state_cache.get(state) {
+        let state_hash = StateHash::hash_state(state);
+        if let Some(&existing_index) = self.state_cache.get(&state_hash) {
             // Increment hits if it exists
             if let Some(existing_node) = self.graph.node_weight_mut(existing_index) {
                 existing_node.hits = existing_node.hits.saturating_add(1);
@@ -70,7 +86,7 @@ impl StateTree {
             existing_index
         } else {
             // Add the new node
-            let node = Node::new(state.clone());
+            let node = Node::new(state_hash);
             self.graph.add_node(node)
         }
     }
@@ -125,6 +141,95 @@ impl StateTree {
         {
             edge.hits = edge.hits.saturating_add(1);
             self.total_edge_hits = self.total_edge_hits.saturating_add(1);
+        }
+    }
+
+    pub fn resolve_state(&self, node: NodeIndex) -> Option<State> {
+        let mut state = self.initial_state.clone();
+        if let Some((_, path)) = petgraph::algo::astar(
+            &self.graph,
+            self.root,
+            |finish| finish == node,
+            |_| 1,
+            |_| 0,
+        ) {
+            for node in path.windows(2) {
+                if let [from, to] = node {
+                    if let Some(edge) = self.graph.find_edge(*from, *to)
+                        && let Some(edge_weight) = self.graph.edge_weight(edge)
+                    {
+                        if let Err(e) = edge_weight.transition.apply(&mut state) {
+                            log::error!("Error applying transition: {:?}", e);
+                            return None;
+                        }
+                    } else {
+                        log::error!("Edge not found from {:?} to {:?}", from, to);
+                        return None;
+                    }
+                } else {
+                    log::error!("Invalid path segment: {:?}", node);
+                    return None;
+                }
+            }
+        }
+        Some(state)
+    }
+
+    pub fn visit_states<F>(&self, externals_only: bool, mut visitor: F)
+    where
+        F: FnMut(&State, u64) -> bool,
+    {
+        self.visit_states_recursive(
+            externals_only,
+            self.root,
+            &self.initial_state,
+            &mut FxHashSet::default(),
+            &mut visitor,
+        )
+    }
+
+    fn visit_states_recursive<F>(
+        &self,
+        externals_only: bool,
+        node: NodeIndex,
+        state: &State,
+        visited: &mut FxHashSet<NodeIndex>,
+        visitor: &mut F,
+    ) where
+        F: FnMut(&State, u64) -> bool,
+    {
+        if !visited.insert(node) {
+            return; // Already visited
+        }
+
+        let should_visit = if externals_only {
+            self.graph.neighbors(node).next().is_none()
+        } else {
+            true
+        };
+
+        // Visit the state at the current node
+        let keep_going = if should_visit {
+            visitor(state, self.graph[node].hits.get())
+        } else {
+            true
+        };
+        if !keep_going {
+            return;
+        }
+
+        for neighbor in self.graph.neighbors(node) {
+            // Apply the transition to get the new state
+            if let Some(edge) = self.graph.find_edge(node, neighbor)
+                && let Some(edge_weight) = self.graph.edge_weight(edge)
+            {
+                let mut new_state = state.clone();
+                if let Err(e) = edge_weight.transition.apply(&mut new_state) {
+                    log::error!("Error applying transition: {:?}", e);
+                    continue;
+                }
+                self.visit_states_recursive(externals_only, neighbor, &new_state, visited, visitor);
+            }
         }
     }
 

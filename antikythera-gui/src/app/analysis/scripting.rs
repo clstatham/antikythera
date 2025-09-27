@@ -110,30 +110,36 @@ impl Query for ScriptProbabilityQuery<'_> {
         let globals = self.lua.globals();
         let func: LuaFunction = globals.get("query")?;
 
-        if self.run_on_outcomes_only {
-            for node in state_tree.graph.externals(Outgoing) {
-                let node = &state_tree.graph[node];
-                let lua_state = self.lua.create_userdata(LuaState((*node.state).clone()))?;
+        let mut error = None;
 
-                let result: bool = func.call((lua_state,))?;
-                if result {
-                    count += node.hits.get();
+        state_tree.visit_states(self.run_on_outcomes_only, |state, hits| {
+            let lua_state = match self.lua.create_userdata(LuaState(state.clone())) {
+                Ok(ud) => ud,
+                Err(e) => {
+                    error = Some(anyhow::anyhow!("Error creating Lua state: {}", e));
+                    return false;
                 }
-
-                total_states += node.hits.get();
-            }
-        } else {
-            for node in state_tree.graph.node_indices() {
-                let node = &state_tree.graph[node];
-                let lua_state = self.lua.create_userdata(LuaState((*node.state).clone()))?;
-
-                let result: bool = func.call((lua_state,))?;
-                if result {
-                    count += node.hits.get();
+            };
+            let result: bool = match func.call((lua_state,)) {
+                Ok(res) => res,
+                Err(e) => {
+                    error = Some(anyhow::anyhow!("Error calling Lua function: {}", e));
+                    return false;
                 }
-
-                total_states += node.hits.get();
+            };
+            if result {
+                count += hits;
             }
+            total_states += hits;
+
+            self.lua.gc_collect().ok();
+            self.lua.gc_collect().ok();
+
+            true
+        });
+
+        if let Some(e) = error {
+            return Err(e);
         }
 
         let result = if total_states > 0 {

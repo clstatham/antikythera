@@ -7,6 +7,7 @@ use crate::{
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum TransitionType {
+    Root,
     BeginCombat,
     EndCombat,
     InitiativeRoll,
@@ -30,6 +31,7 @@ pub enum TransitionType {
 /// This means that transitions should not contain any random elements or references to external state.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Eq, Hash)]
 pub enum Transition {
+    Root,
     BeginCombat,
     EndCombat,
     InitiativeRoll {
@@ -61,6 +63,7 @@ pub enum Transition {
 impl Transition {
     pub fn transition_type(&self) -> TransitionType {
         match self {
+            Transition::Root => TransitionType::Root,
             Transition::BeginCombat => TransitionType::BeginCombat,
             Transition::EndCombat => TransitionType::EndCombat,
             Transition::InitiativeRoll { .. } => TransitionType::InitiativeRoll,
@@ -75,6 +78,7 @@ impl Transition {
 
     pub fn emoji(&self) -> &'static str {
         match self {
+            Transition::Root => "root",
             Transition::ActionEconomyUsed { .. } => "⚔️",
             Transition::BeginCombat => "🎬",
             Transition::EndCombat => "🏁",
@@ -110,6 +114,7 @@ impl Transition {
 
     pub fn apply(&self, state: &mut State) -> anyhow::Result<()> {
         match self {
+            Transition::Root => {}
             Transition::BeginCombat => {
                 state.current_turn_index = Some(0);
             }
@@ -184,6 +189,7 @@ impl Transition {
 
     pub fn pretty_print(&self, f: &mut impl std::fmt::Write, state: &State) -> std::fmt::Result {
         match self {
+            Transition::Root => write!(f, "<Initial State>"),
             Transition::InitiativeRoll { actor, roll } => {
                 actor.pretty_print(f, state)?;
                 write!(f, " rolls initiative: {}", roll)
