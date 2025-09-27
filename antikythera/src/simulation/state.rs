@@ -78,7 +78,7 @@ impl State {
     }
 
     pub fn enemies_of(&self, actor_id: ActorId) -> Vec<ActorId> {
-        let mut enemies = BTreeSet::from_iter(self.actors.keys().cloned().collect::<Vec<_>>());
+        let mut enemies = BTreeSet::from_iter(self.actors.keys().cloned());
         if let Some(allies) = self.allies_of(actor_id) {
             for ally in allies {
                 enemies.remove(&ally);
@@ -100,16 +100,13 @@ impl State {
         !self.are_allies(actor1, actor2)
     }
     pub fn is_combat_over(&self) -> bool {
-        // combat is over when only one allied group remains
-        let mut remaining_groups = 0;
-        let mut seen_groups = BTreeSet::new();
+        // combat is over when only one allied group remains alive
+        let mut living_groups = BTreeSet::new();
         for actor in self.actors.values() {
-            if !seen_groups.contains(&actor.group) {
-                seen_groups.insert(actor.group);
-                remaining_groups += 1;
+            if actor.is_alive() {
+                living_groups.insert(actor.group);
             }
         }
-
-        remaining_groups <= 1
+        living_groups.len() <= 1
     }
 }

@@ -1,4 +1,3 @@
 /target
-/antikythera-statistics.json
 /profile.json.gz
-/used_state.json
+/*.json

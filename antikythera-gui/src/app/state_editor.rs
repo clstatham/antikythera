@@ -20,7 +20,7 @@ impl StateEditorApp {
         match (&self.state, &self.last_saved_state) {
             (Some(current), Some(saved)) => current != saved,
             (Some(_), None) => true,
-            (None, Some(_)) => true,
+            (None, Some(_)) => false,
             (None, None) => false,
         }
     }
