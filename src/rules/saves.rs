@@ -1,9 +1,10 @@
-use rustc_hash::FxHashMap;
+use std::collections::BTreeMap;
+
 use serde::{Deserialize, Serialize};
 
 use crate::rules::stats::Stat;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub enum SavingThrow {
     Strength,
     Dexterity,
@@ -48,32 +49,22 @@ impl SavingThrow {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize, Hash)]
 pub struct SavingThrowProficiencies {
-    proficiencies: FxHashMap<SavingThrow, bool>,
-}
-
-impl Default for SavingThrowProficiencies {
-    fn default() -> Self {
-        let mut proficiencies = FxHashMap::default();
-        for save in SavingThrow::all() {
-            proficiencies.insert(save, false);
-        }
-        SavingThrowProficiencies { proficiencies }
-    }
+    pub save_proficiencies: BTreeMap<SavingThrow, bool>,
 }
 
 impl SavingThrowProficiencies {
     pub fn with_proficiency(mut self, save: SavingThrow, proficient: bool) -> Self {
-        self.proficiencies.insert(save, proficient);
+        self.set(save, proficient);
         self
     }
 
     pub fn set(&mut self, save: SavingThrow, proficient: bool) {
-        self.proficiencies.insert(save, proficient);
+        self.save_proficiencies.insert(save, proficient);
     }
 
     pub fn get(&self, save: SavingThrow) -> bool {
-        *self.proficiencies.get(&save).unwrap_or(&false)
+        *self.save_proficiencies.get(&save).unwrap_or(&false)
     }
 }

@@ -1,9 +1,8 @@
-use rand_distr::Distribution;
 use serde::{Deserialize, Serialize};
 
 use crate::statistics::roller::Roller;
 
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Hash)]
 pub enum Advantage {
     #[default]
     Normal,
@@ -11,7 +10,7 @@ pub enum Advantage {
     Disadvantage,
 }
 
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Hash)]
 pub struct RollSettings {
     pub advantage: Advantage,
     pub minimum_die_value: Option<u32>,
@@ -84,7 +83,7 @@ impl RollResult {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Hash)]
 pub struct RollPlan {
     pub num_dice: u32,
     pub die_size: u32,
@@ -103,7 +102,6 @@ impl RollPlan {
 
     fn roll_normal(&self, rng: &mut Roller) -> anyhow::Result<RollResult> {
         let low = self.settings.reroll_dice_below.unwrap_or(1);
-        let die = rand_distr::Uniform::new_inclusive(low, self.die_size)?;
 
         let clamp_min = self.settings.minimum_die_value.unwrap_or(1);
         let clamp_max = self.settings.maximum_die_value.unwrap_or(self.die_size);
@@ -115,16 +113,18 @@ impl RollPlan {
         let mut crit_failure_count = 0;
 
         for _ in 0..self.num_dice {
-            let roll = die.sample(rng.rng());
+            let roll = rng.roll(low, self.die_size);
             let clamped_roll = roll.clamp(clamp_min, clamp_max);
             individual_rolls.push(clamped_roll);
             total += clamped_roll as i32;
 
             // crits can only happen on d20s
-            if clamped_roll == 20 {
-                crit_success_count += 1;
-            } else if clamped_roll == 1 {
-                crit_failure_count += 1;
+            if self.die_size == 20 {
+                if clamped_roll == 20 {
+                    crit_success_count += 1;
+                } else if clamped_roll == 1 {
+                    crit_failure_count += 1;
+                }
             }
         }
 

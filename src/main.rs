@@ -6,8 +6,12 @@ use crate::{
         skills::{Skill, SkillProficiency},
         stats::Stat,
     },
-    simulation::{executor::Executor, policy::RandomPolicy, state::State},
-    statistics::roller::Roller,
+    simulation::state::State,
+    statistics::{
+        integration::Integrator,
+        query::{OutcomeConditionProbability, Query},
+        roller::Roller,
+    },
 };
 
 pub mod roll_parser;
@@ -22,7 +26,6 @@ fn main() -> anyhow::Result<()> {
             use std::io::Write;
             writeln!(buf, "[{}] {}", record.level(), record.args())
         })
-        .filter_level(log::LevelFilter::Debug)
         .try_init()?;
 
     let mut state = State::new();
@@ -65,24 +68,47 @@ fn main() -> anyhow::Result<()> {
         .movement_speed(30)
         .skill_proficiency(Skill::Stealth, SkillProficiency::Proficient)
         .saving_throw_proficiency(SavingThrow::Dexterity, true)
-        .armor_class(7)
-        .max_health(15)
+        .armor_class(15)
+        .max_health(13)
         .level(1)
         .build();
 
     goblin.give_item(sword.clone(), 1);
 
+    let goblin2 = goblin.clone();
+
     let hero = state.add_actor(hero);
     let goblin = state.add_actor(goblin);
+    let goblin2 = state.add_actor(goblin2);
     state.add_ally_group(vec![hero]);
-    state.add_ally_group(vec![goblin]);
+    state.add_ally_group(vec![goblin, goblin2]);
+
+    println!("Initial state:\n{:#?}", state);
 
     let roller = Roller::new();
-    let policy = RandomPolicy;
-    let mut executor = Executor::new(roller, state, policy);
-    executor.run()?;
+    let mut integrator = Integrator::new(1_000, roller, state);
+    integrator.run()?;
 
-    executor.save_log(std::path::Path::new("target/simulation_log.json"))?;
+    let stats = integrator.compute_statistics();
+    stats.print_summary();
+    stats.write_json("target/combat_stats.json")?;
+    // stats.write_dot("target/combat_stats.dot")?;
+
+    let query = OutcomeConditionProbability::new(move |state: &State| {
+        state.get_actor(hero).map(|a| a.is_alive()).unwrap()
+    });
+    let prob = query.query(integrator.state_tree(), &stats)?;
+    println!("Probability that hero is alive: {:.2}%", prob * 100.0);
+    let query = OutcomeConditionProbability::new(move |state: &State| {
+        state.get_actor(goblin).map(|a| a.is_alive()).unwrap()
+    });
+    let prob = query.query(integrator.state_tree(), &stats)?;
+    println!("Probability that goblin 1 is alive: {:.2}%", prob * 100.0);
+    let query = OutcomeConditionProbability::new(move |state: &State| {
+        state.get_actor(goblin2).map(|a| a.is_alive()).unwrap()
+    });
+    let prob = query.query(integrator.state_tree(), &stats)?;
+    println!("Probability that goblin 2 is alive: {:.2}%", prob * 100.0);
 
     Ok(())
 }

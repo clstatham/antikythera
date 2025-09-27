@@ -145,7 +145,7 @@ pub enum ActionEconomyUsage {
     BonusAction,
 }
 
-#[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize, Hash)]
 pub struct ActionEconomy {
     pub action_used: bool,
     pub bonus_action_used: bool,

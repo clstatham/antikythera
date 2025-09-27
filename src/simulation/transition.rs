@@ -5,6 +5,19 @@ use crate::{
     simulation::state::State,
 };
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum TransitionType {
+    BeginCombat,
+    EndCombat,
+    InitiativeRoll,
+    BeginTurn,
+    EndTurn,
+    AdvanceInitiative,
+    HealthModification,
+    StatModification,
+    ActionEconomyUsed,
+}
+
 /// A transition represents a ***single***, atomic change from one simulation state to another.
 /// For instance, it could represent a single amount of damage being dealt, or a stat modifier being applied or removed.
 ///
@@ -15,8 +28,7 @@ use crate::{
 ///
 /// Transitions should be deterministic and side-effect free.
 /// This means that transitions should not contain any random elements or references to external state.
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Eq, Hash)]
 pub enum Transition {
     BeginCombat,
     EndCombat,
@@ -47,6 +59,20 @@ pub enum Transition {
 }
 
 impl Transition {
+    pub fn transition_type(&self) -> TransitionType {
+        match self {
+            Transition::BeginCombat => TransitionType::BeginCombat,
+            Transition::EndCombat => TransitionType::EndCombat,
+            Transition::InitiativeRoll { .. } => TransitionType::InitiativeRoll,
+            Transition::BeginTurn { .. } => TransitionType::BeginTurn,
+            Transition::EndTurn { .. } => TransitionType::EndTurn,
+            Transition::AdvanceInitiative => TransitionType::AdvanceInitiative,
+            Transition::HealthModification { .. } => TransitionType::HealthModification,
+            Transition::StatModification { .. } => TransitionType::StatModification,
+            Transition::ActionEconomyUsed { .. } => TransitionType::ActionEconomyUsed,
+        }
+    }
+
     pub fn emoji(&self) -> &'static str {
         match self {
             Transition::ActionEconomyUsed { .. } => "⚔️",

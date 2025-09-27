@@ -1,4 +1,3 @@
-use rustc_hash::FxHashMap;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -24,37 +23,59 @@ impl Stat {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Hash)]
 pub struct Stats {
-    stats: FxHashMap<Stat, u32>,
+    strength: u32,
+    dexterity: u32,
+    constitution: u32,
+    intelligence: u32,
+    wisdom: u32,
+    charisma: u32,
 }
 
 impl Default for Stats {
     fn default() -> Self {
-        let mut stats = FxHashMap::default();
-        for stat in Stat::all() {
-            stats.insert(stat, 10);
+        Self {
+            strength: 10,
+            dexterity: 10,
+            constitution: 10,
+            intelligence: 10,
+            wisdom: 10,
+            charisma: 10,
         }
-        Stats { stats }
     }
 }
 
 impl Stats {
     pub fn with_stat(mut self, stat: Stat, value: u32) -> Self {
-        self.stats.insert(stat, value);
+        self.set(stat, value);
         self
     }
 
     pub fn get(&self, stat: Stat) -> u32 {
-        self.stats.get(&stat).copied().unwrap_or(10)
+        match stat {
+            Stat::Strength => self.strength,
+            Stat::Dexterity => self.dexterity,
+            Stat::Constitution => self.constitution,
+            Stat::Intelligence => self.intelligence,
+            Stat::Wisdom => self.wisdom,
+            Stat::Charisma => self.charisma,
+        }
     }
 
     pub fn get_mut(&mut self, stat: Stat) -> &mut u32 {
-        self.stats.entry(stat).or_insert(10)
+        match stat {
+            Stat::Strength => &mut self.strength,
+            Stat::Dexterity => &mut self.dexterity,
+            Stat::Constitution => &mut self.constitution,
+            Stat::Intelligence => &mut self.intelligence,
+            Stat::Wisdom => &mut self.wisdom,
+            Stat::Charisma => &mut self.charisma,
+        }
     }
 
     pub fn set(&mut self, stat: Stat, value: u32) {
-        self.stats.insert(stat, value);
+        *self.get_mut(stat) = value;
     }
 
     pub fn modifier(&self, stat: Stat) -> i32 {

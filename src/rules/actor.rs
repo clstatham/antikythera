@@ -132,7 +132,7 @@ impl ActorBuilder {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Hash)]
 pub struct Actor {
     pub id: ActorId,
     pub name: String,

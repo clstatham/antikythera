@@ -1,4 +1,5 @@
-use rustc_hash::FxHashMap;
+use std::collections::BTreeMap;
+
 use serde::{Deserialize, Serialize};
 
 use crate::rules::{
@@ -6,7 +7,7 @@ use crate::rules::{
     stats::Stat,
 };
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub enum Skill {
     Acrobatics,
     AnimalHandling,
@@ -76,44 +77,35 @@ impl Skill {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum SkillProficiency {
+    #[default]
     None,
     HalfProficient,
     Proficient,
     Expert,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize, Hash)]
 pub struct SkillProficiencies {
-    proficiencies: FxHashMap<Skill, SkillProficiency>,
-}
-
-impl Default for SkillProficiencies {
-    fn default() -> Self {
-        let mut proficiencies = FxHashMap::default();
-        for skill in Skill::all() {
-            proficiencies.insert(skill, SkillProficiency::None);
-        }
-        SkillProficiencies { proficiencies }
-    }
+    pub skill_proficiencies: BTreeMap<Skill, SkillProficiency>,
 }
 
 impl SkillProficiencies {
     pub fn with_proficiency(mut self, skill: Skill, proficiency: SkillProficiency) -> Self {
-        self.proficiencies.insert(skill, proficiency);
+        self.set(skill, proficiency);
         self
     }
 
     pub fn get(&self, skill: Skill) -> SkillProficiency {
         *self
-            .proficiencies
+            .skill_proficiencies
             .get(&skill)
             .unwrap_or(&SkillProficiency::None)
     }
 
     pub fn set(&mut self, skill: Skill, proficiency: SkillProficiency) {
-        self.proficiencies.insert(skill, proficiency);
+        self.skill_proficiencies.insert(skill, proficiency);
     }
 }
 

@@ -1,3 +1,4 @@
+use derive_more::IntoIterator;
 use serde::{Deserialize, Serialize};
 use unicode_width::UnicodeWidthStr;
 
@@ -12,8 +13,7 @@ use crate::{
 };
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub enum LogEntry {
-    Transition(Transition),
+pub enum ExtraLogEntry {
     Roll(RollResult),
     Action(ActionTaken),
     AttackMiss {
@@ -37,43 +37,40 @@ pub enum LogEntry {
     },
 }
 
-impl LogEntry {
+impl ExtraLogEntry {
     pub fn emoji(&self) -> &'static str {
         match self {
-            LogEntry::Transition(t) => t.emoji(),
-            LogEntry::Roll(_) => "🎲",
-            LogEntry::Action(a) => match a.action {
+            ExtraLogEntry::Roll(_) => "🎲",
+            ExtraLogEntry::Action(a) => match a.action {
                 Action::Wait => "💤",
                 _ => "⚔️",
             },
-            LogEntry::AttackHit { .. } => "💥",
-            LogEntry::AttackMiss { .. } => "❌",
-            LogEntry::ActorDowned { .. } => "💀",
-            LogEntry::ActorStabilized { .. } => "❤️‍🩹",
-            LogEntry::ActorKilled { .. } => "☠️",
+            ExtraLogEntry::AttackHit { .. } => "💥",
+            ExtraLogEntry::AttackMiss { .. } => "❌",
+            ExtraLogEntry::ActorDowned { .. } => "💀",
+            ExtraLogEntry::ActorStabilized { .. } => "❤️‍🩹",
+            ExtraLogEntry::ActorKilled { .. } => "☠️",
         }
     }
 
     pub fn is_quiet(&self) -> bool {
         match self {
-            LogEntry::Transition(t) => t.is_quiet(),
-            LogEntry::Action(a) => matches!(a.action, Action::Wait),
+            ExtraLogEntry::Action(a) => matches!(a.action, Action::Wait),
             _ => false,
         }
     }
 
     fn pretty_print(&self, f: &mut impl std::fmt::Write, state: &State) -> std::fmt::Result {
         match self {
-            LogEntry::Transition(transition) => transition.pretty_print(f, state),
-            LogEntry::Roll(roll) => {
+            ExtraLogEntry::Roll(roll) => {
                 roll.pretty_print(f)?;
                 Ok(())
             }
-            LogEntry::Action(action) => {
+            ExtraLogEntry::Action(action) => {
                 action.pretty_print(f, state)?;
                 Ok(())
             }
-            LogEntry::AttackHit {
+            ExtraLogEntry::AttackHit {
                 attacker,
                 target,
                 weapon,
@@ -85,7 +82,7 @@ impl LogEntry {
                 weapon.pretty_print(f, state)?;
                 Ok(())
             }
-            LogEntry::AttackMiss {
+            ExtraLogEntry::AttackMiss {
                 attacker,
                 target,
                 weapon,
@@ -97,17 +94,17 @@ impl LogEntry {
                 weapon.pretty_print(f, state)?;
                 Ok(())
             }
-            LogEntry::ActorDowned { actor } => {
+            ExtraLogEntry::ActorDowned { actor } => {
                 actor.pretty_print(f, state)?;
                 write!(f, " is downed")?;
                 Ok(())
             }
-            LogEntry::ActorStabilized { actor } => {
+            ExtraLogEntry::ActorStabilized { actor } => {
                 actor.pretty_print(f, state)?;
                 write!(f, " is stabilized")?;
                 Ok(())
             }
-            LogEntry::ActorKilled { actor } => {
+            ExtraLogEntry::ActorKilled { actor } => {
                 actor.pretty_print(f, state)?;
                 write!(f, " is killed")?;
                 Ok(())
@@ -116,7 +113,36 @@ impl LogEntry {
     }
 }
 
-#[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub enum LogEntry {
+    Transition(Transition),
+    Extra(ExtraLogEntry),
+}
+
+impl LogEntry {
+    pub fn emoji(&self) -> &'static str {
+        match self {
+            LogEntry::Transition(t) => t.emoji(),
+            LogEntry::Extra(a) => a.emoji(),
+        }
+    }
+
+    pub fn is_quiet(&self) -> bool {
+        match self {
+            LogEntry::Transition(t) => t.is_quiet(),
+            LogEntry::Extra(a) => a.is_quiet(),
+        }
+    }
+
+    fn pretty_print(&self, f: &mut impl std::fmt::Write, state: &State) -> std::fmt::Result {
+        match self {
+            LogEntry::Transition(transition) => transition.pretty_print(f, state),
+            LogEntry::Extra(aux) => aux.pretty_print(f, state),
+        }
+    }
+}
+
+#[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize, IntoIterator)]
 #[serde(transparent)]
 pub struct SimulationLog {
     entries: Vec<LogEntry>,

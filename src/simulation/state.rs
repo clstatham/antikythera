@@ -7,7 +7,7 @@ use crate::rules::{
     items::{Item, ItemId, ItemType},
 };
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Hash)]
 pub struct State {
     pub turn: u64,
     pub actors: BTreeMap<ActorId, Actor>,

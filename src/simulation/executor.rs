@@ -5,7 +5,7 @@ use crate::{
     simulation::{
         action_evaluator::ActionEvaluator,
         logging::{LogEntry, SimulationLog},
-        policy::Policy,
+        policy::{Policy, RandomPolicy},
         state::State,
         transition::Transition,
     },
@@ -13,23 +13,28 @@ use crate::{
     utils::ProtectedCell,
 };
 
+#[derive(Debug, Clone)]
 pub struct Executor {
     pub roller: Roller,
     pub state: ProtectedCell<State>,
     pub log: SimulationLog,
     pub evaluator: ActionEvaluator,
-    pub policy: Box<dyn Policy>,
+    pub policy: RandomPolicy,
 }
 
 impl Executor {
-    pub fn new(roller: Roller, state: State, policy: impl Policy) -> Self {
+    pub fn new(roller: Roller, state: State) -> Self {
         Self {
             roller,
             state: ProtectedCell::new(state),
             log: SimulationLog::default(),
             evaluator: ActionEvaluator,
-            policy: Box::new(policy),
+            policy: RandomPolicy,
         }
+    }
+
+    pub fn take_log(&mut self) -> SimulationLog {
+        std::mem::take(&mut self.log)
     }
 
     pub fn save_log(&self, path: &std::path::Path) -> anyhow::Result<()> {
@@ -47,9 +52,9 @@ impl Executor {
     }
 
     pub fn log(&mut self, entry: LogEntry) -> anyhow::Result<()> {
-        if let LogEntry::Transition(transition) = &entry {
-            transition.apply(ProtectedCell::get_mut(&mut self.state))?;
-        }
+        // if let LogEntry::Transition(transition) = &entry {
+        //     transition.apply(ProtectedCell::get_mut(&mut self.state))?;
+        // }
         self.log.log(entry, &self.state);
         Ok(())
     }
@@ -61,6 +66,11 @@ impl Executor {
         for entry in entries {
             self.log(entry)?;
         }
+        Ok(())
+    }
+
+    pub fn clear_log(&mut self) -> anyhow::Result<()> {
+        self.log = SimulationLog::default();
         Ok(())
     }
 
@@ -99,6 +109,9 @@ impl Executor {
         // advance to next actor in initiative order
         self.log(LogEntry::Transition(Transition::AdvanceInitiative))?;
 
+        // fixme: hack
+        Transition::AdvanceInitiative.apply(ProtectedCell::get_mut(&mut self.state))?;
+
         let current_actor_id = self.state.initiative_order[self.state.current_turn_index.unwrap()];
 
         let Some(current_actor) = self.state.get_actor(current_actor_id) else {
@@ -131,12 +144,9 @@ impl Executor {
             self.extend_log(action_logs)?;
         }
 
-        self.log.log(
-            LogEntry::Transition(Transition::EndTurn {
-                actor: current_actor_id,
-            }),
-            &self.state,
-        );
+        self.log(LogEntry::Transition(Transition::EndTurn {
+            actor: current_actor_id,
+        }))?;
 
         Ok(true)
     }

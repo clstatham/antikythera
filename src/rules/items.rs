@@ -1,5 +1,6 @@
+use std::collections::BTreeMap;
+
 use derive_more::{Deref, From, Into};
-use rustc_hash::FxHashMap;
 use serde::{Deserialize, Serialize};
 
 use crate::rules::{dice::RollPlan, skills::SkillProficiency, spells::SpellId};
@@ -24,7 +25,7 @@ impl ItemId {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Hash)]
 pub enum ItemType {
     Potion(Potion),
     Scroll(Scroll),
@@ -32,7 +33,7 @@ pub enum ItemType {
     Armor(Armor),
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Hash)]
 pub struct Item {
     pub id: ItemId,
     pub name: String,
@@ -50,7 +51,7 @@ impl Item {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Hash)]
 pub struct Potion {
     pub healing_amount: RollPlan,
 }
@@ -70,12 +71,12 @@ impl Potion {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Hash)]
 pub struct Scroll {
     pub spell_id: SpellId,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Ord, Eq, Hash, Serialize, Deserialize)]
 pub enum WeaponType {
     Club,
     Dagger,
@@ -159,7 +160,7 @@ impl WeaponType {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Hash)]
 pub struct Weapon {
     pub weapon_type: WeaponType,
     pub attack_bonus: i32,
@@ -260,19 +261,9 @@ impl From<WeaponProficiency> for SkillProficiency {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize, Hash)]
 pub struct WeaponProficiencies {
-    proficiencies: FxHashMap<WeaponType, WeaponProficiency>,
-}
-
-impl Default for WeaponProficiencies {
-    fn default() -> Self {
-        let mut proficiencies = FxHashMap::default();
-        for weapon_type in WeaponType::all() {
-            proficiencies.insert(*weapon_type, WeaponProficiency::None);
-        }
-        WeaponProficiencies { proficiencies }
-    }
+    proficiencies: BTreeMap<WeaponType, WeaponProficiency>,
 }
 
 impl WeaponProficiencies {
@@ -297,7 +288,7 @@ impl WeaponProficiencies {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Hash)]
 pub struct Armor {
     pub ac_bonus: u32,
     pub stealth_disadvantage: bool,
@@ -313,13 +304,13 @@ impl Armor {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Hash)]
 pub struct InventoryEntry {
     pub item: Item,
     pub quantity: u32,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum EquipSlot {
     Head,
     Chest,
@@ -330,9 +321,9 @@ pub enum EquipSlot {
     Accessory,
 }
 
-#[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize, Hash)]
 pub struct EquippedItems {
-    pub slots: FxHashMap<EquipSlot, ItemId>,
+    pub slots: BTreeMap<EquipSlot, ItemId>,
 }
 
 impl EquippedItems {
@@ -349,9 +340,9 @@ impl EquippedItems {
     }
 }
 
-#[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize, Deref)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize, Deref, Hash)]
 pub struct Inventory {
-    pub items: FxHashMap<ItemId, InventoryEntry>,
+    pub items: BTreeMap<ItemId, InventoryEntry>,
 }
 
 impl Inventory {

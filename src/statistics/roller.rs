@@ -1,6 +1,6 @@
 use rand::{Rng, SeedableRng, rngs::StdRng};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Roller {
     rng: StdRng,
 }
@@ -19,6 +19,10 @@ impl Roller {
 
     pub fn d(&mut self, die_size: u32) -> u32 {
         self.rng.random_range(1..=die_size)
+    }
+
+    pub fn roll(&mut self, min: u32, max: u32) -> u32 {
+        self.rng.random_range(min..=max)
     }
 
     pub fn rng(&mut self) -> &mut StdRng {
