@@ -142,7 +142,7 @@ impl eframe::App for App {
 pub fn unsaved_changes_dialog() -> bool {
     let confirm = rfd::MessageDialog::new()
         .set_title("Unsaved Changes")
-        .set_description("You have unsaved changes. Continue?")
+        .set_description("Discard unsaved changes?")
         .set_buttons(rfd::MessageButtons::YesNo)
         .set_level(rfd::MessageLevel::Warning)
         .show();

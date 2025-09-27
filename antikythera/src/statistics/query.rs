@@ -5,7 +5,7 @@ use crate::{
     statistics::state_tree::{StateTree, StateTreeStats},
 };
 
-pub trait Query: 'static {
+pub trait Query {
     type Output;
     fn query(
         &self,

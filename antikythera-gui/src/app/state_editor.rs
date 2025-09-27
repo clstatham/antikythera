@@ -6,6 +6,7 @@ use crate::app::unsaved_changes_dialog;
 #[derive(Default)]
 struct StateEditorUiState {
     inventory_item_to_add: ItemId,
+    name_editing: Option<(u32, String)>,
 }
 
 #[derive(Default)]
@@ -98,7 +99,7 @@ impl StateEditorApp {
         let mut remove = false;
         let mut clone = false;
 
-        egui::CollapsingHeader::new(format!("{}", actor.id.0))
+        egui::CollapsingHeader::new(format!("{}: {}", actor.id.0, actor.name))
             .default_open(false)
             .show(ui, |ui| {
                 ui.horizontal(|ui| {
@@ -112,7 +113,25 @@ impl StateEditorApp {
 
                 ui.horizontal(|ui| {
                     ui.label("Name:");
-                    ui.add(egui::TextEdit::singleline(&mut actor.name).desired_width(200.0));
+
+                    let name_field = if let Some((id, editing_name)) = &mut ui_state.name_editing
+                        && id == &actor.id.0
+                    {
+                        ui.add(egui::TextEdit::singleline(editing_name).desired_width(200.0))
+                    } else {
+                        let mut name = actor.name.clone();
+                        ui.add(egui::TextEdit::singleline(&mut name).desired_width(200.0))
+                    };
+
+                    if name_field.gained_focus() {
+                        ui_state.name_editing = Some((actor.id.0, actor.name.clone()));
+                    }
+                    if name_field.lost_focus()
+                        && let Some((id, _)) = &ui_state.name_editing
+                        && id == &actor.id.0
+                    {
+                        actor.name = ui_state.name_editing.take().unwrap().1;
+                    }
                 });
                 ui.horizontal(|ui| {
                     ui.label("NPC:");
@@ -357,18 +376,41 @@ impl StateEditorApp {
             }); // end CollapsingHeader for Actors
     }
 
-    fn item_ui(ui: &mut egui::Ui, item_id: ItemId, state: &mut State) {
+    fn item_ui(
+        ui: &mut egui::Ui,
+        item_id: ItemId,
+        state: &mut State,
+        ui_state: &mut StateEditorUiState,
+    ) {
         let Some(item) = state.items.get_mut(&item_id) else {
             ui.label(format!("Item ID {} not found in state.", item_id.0));
             return;
         };
 
-        egui::CollapsingHeader::new(format!("{}", item.id.0))
+        egui::CollapsingHeader::new(format!("{}: {}", item.id.0, item.name))
             .default_open(false)
             .show(ui, |ui| {
                 ui.horizontal(|ui| {
                     ui.label("Name:");
-                    ui.add(egui::TextEdit::singleline(&mut item.name).desired_width(200.0));
+
+                    let name_field = if let Some((id, editing_name)) = &mut ui_state.name_editing
+                        && id == &item.id.0
+                    {
+                        ui.add(egui::TextEdit::singleline(editing_name).desired_width(200.0))
+                    } else {
+                        let mut name = item.name.clone();
+                        ui.add(egui::TextEdit::singleline(&mut name).desired_width(200.0))
+                    };
+
+                    if name_field.gained_focus() {
+                        ui_state.name_editing = Some((item.id.0, item.name.clone()));
+                    }
+                    if name_field.lost_focus()
+                        && let Some((id, _)) = &ui_state.name_editing
+                        && id == &item.id.0
+                    {
+                        item.name = ui_state.name_editing.take().unwrap().1;
+                    }
                 });
 
                 ui.horizontal(|ui| {
@@ -480,7 +522,7 @@ impl StateEditorApp {
             }); // end CollapsingHeader for item
     }
 
-    fn items_list_ui(ui: &mut egui::Ui, state: &mut State) {
+    fn items_list_ui(ui: &mut egui::Ui, state: &mut State, ui_state: &mut StateEditorUiState) {
         egui::CollapsingHeader::new("Items")
             .default_open(false)
             .show(ui, |ui| {
@@ -504,7 +546,7 @@ impl StateEditorApp {
                 egui::ScrollArea::vertical().show(ui, |ui| {
                     let items: Vec<ItemId> = state.items.keys().cloned().collect();
                     for item_id in items {
-                        Self::item_ui(ui, item_id, state);
+                        Self::item_ui(ui, item_id, state, ui_state);
                     }
                 }); // end ScrollArea for items
             }); // end CollapsingHeader for Items
@@ -522,7 +564,7 @@ impl StateEditorApp {
         egui::ScrollArea::vertical().show(ui, |ui| {
             Self::actors_list_ui(ui, state, &mut self.ui_state);
             ui.separator();
-            Self::items_list_ui(ui, state);
+            Self::items_list_ui(ui, state, &mut self.ui_state);
         }); // end ScrollArea for state
     }
 }
