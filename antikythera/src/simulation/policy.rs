@@ -53,8 +53,10 @@ impl RandomPolicy {
         let actor = state.get_actor(actor).unwrap();
 
         let mut weapon_used = None;
-        for (item_id, entry) in actor.inventory.iter() {
-            if let ItemInner::Weapon(_) = entry.item.inner {
+        for item_id in actor.inventory.items.keys() {
+            if let Some(item) = state.items.get(item_id)
+                && let ItemInner::Weapon(_) = &item.inner
+            {
                 weapon_used = Some(*item_id);
                 break;
             }

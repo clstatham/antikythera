@@ -14,7 +14,6 @@ pub struct State {
     pub next_actor_id: u32,
     pub items: BTreeMap<ItemId, Item>,
     pub next_item_id: u32,
-    pub allied_groups: BTreeSet<Vec<ActorId>>,
     pub initiative_order: Vec<ActorId>,
     pub current_turn_index: Option<usize>,
 }
@@ -33,7 +32,6 @@ impl State {
             next_actor_id: 1,
             items: BTreeMap::new(),
             next_item_id: 1,
-            allied_groups: BTreeSet::new(),
             initiative_order: Vec::new(),
             current_turn_index: None,
         }
@@ -47,7 +45,7 @@ impl State {
         actor_id
     }
 
-    pub fn add_item(&mut self, name: &str, item: ItemInner) -> Item {
+    pub fn add_item(&mut self, name: &str, item: ItemInner) -> ItemId {
         let item_id = ItemId(self.next_item_id);
         self.next_item_id += 1;
         let item = Item {
@@ -55,8 +53,8 @@ impl State {
             name: name.to_string(),
             inner: item,
         };
-        self.items.insert(item_id, item.clone());
-        item
+        self.items.insert(item_id, item);
+        item_id
     }
 
     pub fn get_actor(&self, actor_id: ActorId) -> Option<&Actor> {
@@ -67,22 +65,23 @@ impl State {
         self.actors.get_mut(&actor_id)
     }
 
-    pub fn add_ally_group(&mut self, group: Vec<ActorId>) {
-        self.allied_groups.insert(group);
-    }
-
-    pub fn allies_of(&self, actor_id: ActorId) -> Option<&[ActorId]> {
-        self.allied_groups
-            .iter()
-            .find(|&group| group.contains(&actor_id))
-            .map(|v| v.as_slice())
+    pub fn allies_of(&self, actor_id: ActorId) -> Option<Vec<ActorId>> {
+        let actor = self.actors.get(&actor_id)?;
+        let group_id = actor.group;
+        let allies: Vec<ActorId> = self
+            .actors
+            .values()
+            .filter(|a| a.group == group_id && a.id != actor_id)
+            .map(|a| a.id)
+            .collect();
+        Some(allies)
     }
 
     pub fn enemies_of(&self, actor_id: ActorId) -> Vec<ActorId> {
         let mut enemies = BTreeSet::from_iter(self.actors.keys().cloned().collect::<Vec<_>>());
         if let Some(allies) = self.allies_of(actor_id) {
             for ally in allies {
-                enemies.remove(ally);
+                enemies.remove(&ally);
             }
         }
         enemies.remove(&actor_id);
@@ -103,12 +102,10 @@ impl State {
     pub fn is_combat_over(&self) -> bool {
         // combat is over when only one allied group remains
         let mut remaining_groups = 0;
-        for group in &self.allied_groups {
-            if group.iter().any(|actor_id| {
-                self.actors
-                    .get(actor_id)
-                    .is_some_and(|actor| actor.is_alive())
-            }) {
+        let mut seen_groups = BTreeSet::new();
+        for actor in self.actors.values() {
+            if !seen_groups.contains(&actor.group) {
+                seen_groups.insert(actor.group);
                 remaining_groups += 1;
             }
         }

@@ -2,13 +2,13 @@ use derive_more::{From, Into};
 use serde::{Deserialize, Serialize};
 
 use crate::{
+    prelude::ItemId,
     rules::{
         actions::ActionEconomy,
         death::DeathSaves,
         dice::{RollPlan, RollSettings},
         items::{
-            EquippedItems, Inventory, Item, Weapon, WeaponProficiencies, WeaponProficiency,
-            WeaponType,
+            EquippedItems, Inventory, Weapon, WeaponProficiencies, WeaponProficiency, WeaponType,
         },
         saves::{SavingThrow, SavingThrowProficiencies},
         skills::{Skill, SkillProficiencies, SkillProficiency},
@@ -41,6 +41,8 @@ impl ActorBuilder {
         Self {
             actor: Actor {
                 id: ActorId(0), // Placeholder, will be set when added to SimulationState
+                npc: false,
+                group: 0,
                 name: name.to_string(),
                 level: 1,
                 armor_class: 10,
@@ -58,6 +60,16 @@ impl ActorBuilder {
                 weapon_proficiencies: WeaponProficiencies::default(),
             },
         }
+    }
+
+    pub fn npc(mut self, is_npc: bool) -> Self {
+        self.actor.npc = is_npc;
+        self
+    }
+
+    pub fn group(mut self, group: u32) -> Self {
+        self.actor.group = group;
+        self
     }
 
     pub fn level(mut self, level: u32) -> Self {
@@ -130,6 +142,8 @@ impl ActorBuilder {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Hash)]
 pub struct Actor {
     pub id: ActorId,
+    pub npc: bool,
+    pub group: u32,
     pub name: String,
     pub level: u32,
     pub armor_class: u32,
@@ -286,11 +300,7 @@ impl Actor {
         }
     }
 
-    pub fn set_initiative(&mut self, initiative: i32) {
-        self.initiative = Some(initiative);
-    }
-
-    pub fn give_item(&mut self, item: Item, quantity: u32) {
+    pub fn give_item(&mut self, item: ItemId, quantity: u32) {
         self.inventory.add_item(item, quantity);
     }
 
@@ -298,6 +308,8 @@ impl Actor {
     pub fn test_actor(id: u32, name: &str) -> Self {
         Self {
             id: ActorId(id),
+            npc: false,
+            group: 0,
             name: name.to_string(),
             level: 1,
             armor_class: 10,

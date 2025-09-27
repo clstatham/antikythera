@@ -37,9 +37,9 @@ impl AnalysisApp {
             self.stats = None;
         }
 
-        ui.separator();
-
         if let Some(stats) = &self.stats {
+            ui.separator();
+
             ui.label(format!(
                 "Results loaded: {} states, {} transitions, {} combats",
                 stats.state_tree.graph.node_count(),

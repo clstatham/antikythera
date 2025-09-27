@@ -125,5 +125,26 @@ impl App {
 impl eframe::App for App {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         self.ui(ctx);
+
+        if ctx.input(|r| r.viewport().close_requested())
+            && self.state_editor_app.has_unsaved_changes()
+        {
+            let should_proceed = unsaved_changes_dialog();
+            if should_proceed {
+                ctx.send_viewport_cmd(egui::ViewportCommand::Close);
+            } else {
+                ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);
+            }
+        }
     }
+}
+
+pub fn unsaved_changes_dialog() -> bool {
+    let confirm = rfd::MessageDialog::new()
+        .set_title("Unsaved Changes")
+        .set_description("You have unsaved changes. Continue?")
+        .set_buttons(rfd::MessageButtons::YesNo)
+        .set_level(rfd::MessageLevel::Warning)
+        .show();
+    confirm == rfd::MessageDialogResult::Yes
 }

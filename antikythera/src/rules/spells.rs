@@ -70,11 +70,7 @@ pub enum SpellTarget {
 }
 
 impl SpellTarget {
-    pub fn pretty_print(
-        &self,
-        f: &mut impl std::fmt::Write,
-        state: &State,
-    ) -> std::fmt::Result {
+    pub fn pretty_print(&self, f: &mut impl std::fmt::Write, state: &State) -> std::fmt::Result {
         match self {
             SpellTarget::SelfTarget => write!(f, "themself"),
             SpellTarget::Ally(actor_id) | SpellTarget::Enemy(actor_id) => {

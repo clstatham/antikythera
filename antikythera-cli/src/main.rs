@@ -47,7 +47,8 @@ pub fn demo_state() -> State {
 
     let sword = state.add_item("Longsword", ItemInner::Weapon(sword));
 
-    let mut actor = ActorBuilder::new("Hero")
+    let mut hero = ActorBuilder::new("Hero")
+        .group(0)
         .stat(Stat::Strength, 16)
         .stat(Stat::Dexterity, 12)
         .stat(Stat::Constitution, 14)
@@ -63,9 +64,10 @@ pub fn demo_state() -> State {
         .weapon_proficiency(WeaponType::Longsword, WeaponProficiency::Proficient)
         .build();
 
-    actor.give_item(sword.clone(), 1);
+    hero.give_item(sword, 1);
 
     let mut goblin1 = ActorBuilder::new("Goblin")
+        .group(1)
         .stat(Stat::Strength, 8)
         .stat(Stat::Dexterity, 14)
         .stat(Stat::Constitution, 10)
@@ -80,14 +82,12 @@ pub fn demo_state() -> State {
 
     let mut goblin2 = goblin1.clone();
 
-    goblin1.give_item(sword.clone(), 1);
+    goblin1.give_item(sword, 1);
     goblin2.give_item(sword, 1);
 
-    let actor = state.add_actor(actor);
-    let goblin1 = state.add_actor(goblin1);
-    let goblin2 = state.add_actor(goblin2);
-    state.add_ally_group(vec![actor]);
-    state.add_ally_group(vec![goblin1, goblin2]);
+    let _hero = state.add_actor(hero);
+    let _goblin1 = state.add_actor(goblin1);
+    let _goblin2 = state.add_actor(goblin2);
 
     state
 }

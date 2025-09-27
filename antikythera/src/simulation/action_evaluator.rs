@@ -103,13 +103,10 @@ impl ActionEvaluator {
                     .get(target)
                     .ok_or_else(|| anyhow::anyhow!("Target actor not found"))?;
 
-                let weapon_used = &actor
-                    .inventory
+                let weapon_used = state
+                    .items
                     .get(weapon_used_id)
-                    .ok_or_else(|| {
-                        anyhow::anyhow!("Actor does not have the weapon used for the attack")
-                    })?
-                    .item;
+                    .ok_or_else(|| anyhow::anyhow!("Weapon item not found"))?;
 
                 let ItemInner::Weapon(weapon_used) = &weapon_used.inner else {
                     return Err(anyhow::anyhow!("Item used for attack is not a weapon"));

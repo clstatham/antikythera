@@ -51,7 +51,7 @@ impl SavingThrow {
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize, Hash)]
 pub struct SavingThrowProficiencies {
-    pub save_proficiencies: BTreeMap<SavingThrow, bool>,
+    save_proficiencies: BTreeMap<SavingThrow, bool>,
 }
 
 impl SavingThrowProficiencies {

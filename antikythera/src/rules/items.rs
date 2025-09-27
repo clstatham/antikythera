@@ -10,18 +10,25 @@ use crate::rules::{dice::RollPlan, skills::SkillProficiency, spells::SpellId};
 )]
 pub struct ItemId(pub u32);
 
+impl Default for ItemId {
+    fn default() -> Self {
+        ItemId(1) // 0 is reserved for unarmed strike
+    }
+}
+
 impl ItemId {
     pub fn pretty_print(
         &self,
         f: &mut impl std::fmt::Write,
         state: &crate::simulation::state::State,
     ) -> std::fmt::Result {
-        for actor in state.actors.values() {
-            if let Some(entry) = actor.inventory.items.get(self) {
-                return write!(f, "{}", entry.item.name);
-            }
+        if self.0 == 0 {
+            write!(f, "Unarmed Strike")
+        } else if let Some(item) = state.items.get(self) {
+            write!(f, "{}", item.name)
+        } else {
+            write!(f, "<Item ID: {}>", self.0)
         }
-        write!(f, "Unarmed Strike")
     }
 }
 
@@ -95,84 +102,84 @@ pub struct Scroll {
 
 #[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Ord, Eq, Hash, Serialize, Deserialize)]
 pub enum WeaponType {
-    Club,
-    Dagger,
-    Greatclub,
-    Handaxe,
-    Javelin,
-    LightHammer,
-    Mace,
-    Quarterstaff,
-    Sickle,
-    Spear,
-    CrossbowLight,
-    Dart,
-    Shortbow,
-    Sling,
     Battleaxe,
+    Blowgun,
+    Club,
+    CrossbowHeavy,
+    CrossbowLight,
+    Dagger,
+    Dart,
     Flail,
     Glaive,
     Greataxe,
+    Greatclub,
     Greatsword,
     Halberd,
+    Handaxe,
+    Javelin,
     Lance,
+    LightHammer,
+    Longbow,
     Longsword,
+    Mace,
     Maul,
     Morningstar,
+    Net,
     Pike,
+    Quarterstaff,
     Rapier,
     Scimitar,
+    Shortbow,
     Shortsword,
+    Sickle,
+    Sling,
+    Spear,
     Trident,
-    WarPick,
     Warhammer,
+    WarPick,
     Whip,
-    Blowgun,
-    CrossbowHeavy,
-    Longbow,
-    Net,
 }
 
 impl WeaponType {
     pub fn all() -> &'static [WeaponType] {
         use WeaponType::*;
         &[
-            Club,
-            Dagger,
-            Greatclub,
-            Handaxe,
-            Javelin,
-            LightHammer,
-            Mace,
-            Quarterstaff,
-            Sickle,
-            Spear,
-            CrossbowLight,
-            Dart,
-            Shortbow,
-            Sling,
             Battleaxe,
+            Blowgun,
+            Club,
+            CrossbowHeavy,
+            CrossbowLight,
+            Dagger,
+            Dart,
             Flail,
             Glaive,
             Greataxe,
+            Greatclub,
             Greatsword,
             Halberd,
+            Handaxe,
+            Javelin,
             Lance,
+            LightHammer,
+            Longbow,
             Longsword,
+            Mace,
             Maul,
             Morningstar,
+            Net,
             Pike,
+            Quarterstaff,
             Rapier,
             Scimitar,
+            Shortbow,
             Shortsword,
+            Sickle,
+            Sling,
+            Spear,
             Trident,
-            WarPick,
             Warhammer,
+            WarPick,
             Whip,
-            Blowgun,
-            CrossbowHeavy,
-            Longbow,
-            Net,
         ]
     }
 }
@@ -321,12 +328,6 @@ impl Armor {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Hash)]
-pub struct InventoryEntry {
-    pub item: Item,
-    pub quantity: u32,
-}
-
 #[derive(Debug, Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum EquipSlot {
     Head,
@@ -359,39 +360,28 @@ impl EquippedItems {
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize, Deref, Hash)]
 pub struct Inventory {
-    pub items: BTreeMap<ItemId, InventoryEntry>,
+    pub items: BTreeMap<ItemId, u32>, // ItemId to quantity
 }
 
 impl Inventory {
-    pub fn add_item(&mut self, item: Item, quantity: u32) {
-        let entry = self
-            .items
-            .entry(item.id)
-            .or_insert(InventoryEntry { item, quantity: 0 });
-        entry.quantity += quantity;
+    pub fn add_item(&mut self, item: ItemId, quantity: u32) {
+        let entry = self.items.entry(item).or_insert(0);
+        *entry += quantity;
     }
 
-    pub fn remove_item(&mut self, item_id: ItemId, quantity: u32) -> Option<Item> {
-        let mut remove = false;
-        if let Some(entry) = self.items.get_mut(&item_id)
-            && entry.quantity >= quantity
-        {
-            entry.quantity -= quantity;
-            if entry.quantity == 0 {
-                remove = true;
+    pub fn remove_item(&mut self, item_id: ItemId, quantity: u32) {
+        if let Some(entry) = self.items.get_mut(&item_id) {
+            if *entry > quantity {
+                *entry -= quantity;
+            } else {
+                self.items.remove(&item_id);
             }
-        }
-
-        if remove {
-            self.items.remove(&item_id).map(|entry| entry.item)
-        } else {
-            self.items.get(&item_id).map(|entry| entry.item.clone())
         }
     }
 
     pub fn has_item(&self, item_id: ItemId, quantity: u32) -> bool {
         self.items
             .get(&item_id)
-            .is_some_and(|entry| entry.quantity >= quantity)
+            .is_some_and(|&entry| entry >= quantity)
     }
 }

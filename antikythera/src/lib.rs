@@ -12,8 +12,8 @@ pub mod prelude {
             damage::DamageType,
             dice::{RollPlan, RollResult, RollSettings},
             items::{
-                Item, ItemId, ItemInner, ItemType, Weapon, WeaponBuilder, WeaponProficiency,
-                WeaponType,
+                Armor, Item, ItemId, ItemInner, ItemType, Potion, Scroll, Weapon, WeaponBuilder,
+                WeaponProficiency, WeaponType,
             },
             saves::SavingThrow,
             skills::{Skill, SkillProficiency},
@@ -84,7 +84,7 @@ mod tests {
             .level(3)
             .build();
 
-        hero.give_item(sword.clone(), 1);
+        hero.give_item(sword, 1);
 
         let mut goblin = ActorBuilder::new("Goblin")
             .stat(Stat::Strength, 8)
@@ -100,15 +100,13 @@ mod tests {
             .level(1)
             .build();
 
-        goblin.give_item(sword.clone(), 1);
+        goblin.give_item(sword, 1);
 
         let goblin2 = goblin.clone();
 
         let hero = state.add_actor(hero);
         let goblin = state.add_actor(goblin);
         let goblin2 = state.add_actor(goblin2);
-        state.add_ally_group(vec![hero]);
-        state.add_ally_group(vec![goblin, goblin2]);
 
         let roller = Roller::new();
         let mut integrator = Integrator::new(100, roller, state);

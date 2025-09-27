@@ -56,7 +56,11 @@ impl SimulationApp {
 
         ui.separator();
 
-        // Integration options
+        if self.state.is_none() {
+            ui.label("Please load or create a state in the State Editor first.");
+            return;
+        }
+
         ui.horizontal(|ui| {
             ui.label("Minimum Combats:");
             ui.add(
@@ -69,6 +73,10 @@ impl SimulationApp {
         ui.separator();
 
         if ui.button("Start Simulation").clicked() && self.progress_rx.is_none() {
+            log::info!(
+                "Starting simulation with {} minimum combats",
+                self.min_combats
+            );
             self.spawn_integrator();
         }
 
@@ -114,23 +122,29 @@ impl SimulationApp {
             if ui.button("Save Results").clicked()
                 && let Some(path) = rfd::FileDialog::new()
                     .add_filter("JSON", &["json"])
-                    .set_file_name("antikythera-results.json")
+                    .set_file_name("antikythera-statistics.json")
                     .save_file()
             {
-                match std::fs::File::create(&path).and_then(|file| {
-                    let writer = std::io::BufWriter::new(file);
-                    serde_json::to_writer(writer, &results).map_err(|e| e.into())
-                }) {
+                let file = match std::fs::File::create(&path) {
+                    Ok(file) => file,
+                    Err(e) => {
+                        log::error!("Failed to create file {}: {}", path.display(), e);
+                        return;
+                    }
+                };
+                let writer = std::io::BufWriter::new(file);
+                match serde_json::to_writer(writer, &results) {
                     Ok(_) => {
                         log::info!("Results saved to {}", path.display());
                     }
                     Err(e) => {
-                        log::error!("Failed to save results: {}", e);
+                        log::error!("Failed to write results to {}: {}", path.display(), e);
                     }
                 }
             }
 
             if ui.button("Clear Results").clicked() {
+                log::info!("Clearing results from memory.");
                 self.stats = None;
             }
         }
