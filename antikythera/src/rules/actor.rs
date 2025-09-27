@@ -43,9 +43,9 @@ impl ActorBuilder {
                 id: ActorId(0), // Placeholder, will be set when added to SimulationState
                 name: name.to_string(),
                 level: 1,
+                armor_class: 10,
                 max_health: 10,
                 health: 10,
-                armor_class: 10,
                 stats: Stats::default(),
                 movement_speed: 30,
                 skill_proficiencies: SkillProficiencies::default(),
@@ -68,11 +68,6 @@ impl ActorBuilder {
     pub fn max_health(mut self, max_health: i32) -> Self {
         self.actor.max_health = max_health;
         self.actor.health = max_health; // Start at full health
-        self
-    }
-
-    pub fn armor_class(mut self, armor_class: u32) -> Self {
-        self.actor.armor_class = armor_class;
         self
     }
 
@@ -137,9 +132,9 @@ pub struct Actor {
     pub id: ActorId,
     pub name: String,
     pub level: u32,
+    pub armor_class: u32,
     pub max_health: i32,
     pub health: i32,
-    pub armor_class: u32,
     pub stats: Stats,
     pub movement_speed: u32,
     pub skill_proficiencies: SkillProficiencies,
@@ -305,9 +300,9 @@ impl Actor {
             id: ActorId(id),
             name: name.to_string(),
             level: 1,
+            armor_class: 10,
             max_health: 10,
             health: 10,
-            armor_class: 15,
             stats: Stats::default(),
             movement_speed: 30,
             skill_proficiencies: SkillProficiencies::default(),

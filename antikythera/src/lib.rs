@@ -11,7 +11,10 @@ pub mod prelude {
             actor::{Actor, ActorBuilder, ActorId},
             damage::DamageType,
             dice::{RollPlan, RollResult, RollSettings},
-            items::{Item, ItemId, ItemType, Weapon, WeaponBuilder, WeaponProficiency, WeaponType},
+            items::{
+                Item, ItemId, ItemInner, ItemType, Weapon, WeaponBuilder, WeaponProficiency,
+                WeaponType,
+            },
             saves::SavingThrow,
             skills::{Skill, SkillProficiency},
             spells::Spell,
@@ -25,7 +28,12 @@ pub mod prelude {
             state::State,
             transition::Transition,
         },
-        statistics::{integration::Integrator, query::*, roller::Roller, state_tree::StateTree},
+        statistics::{
+            integration::Integrator,
+            query::*,
+            roller::Roller,
+            state_tree::{StateTree, StateTreeStats},
+        },
     };
 }
 
@@ -34,7 +42,7 @@ mod tests {
     use crate::{
         rules::{
             actor::ActorBuilder,
-            items::{ItemType, WeaponBuilder, WeaponProficiency, WeaponType},
+            items::{ItemInner, WeaponBuilder, WeaponProficiency, WeaponType},
             saves::SavingThrow,
             skills::{Skill, SkillProficiency},
             stats::Stat,
@@ -57,7 +65,7 @@ mod tests {
             .critical_damage("2d8+3")
             .build();
 
-        let sword = state.add_item("Longsword", ItemType::Weapon(sword));
+        let sword = state.add_item("Longsword", ItemInner::Weapon(sword));
 
         let mut hero = ActorBuilder::new("Hero")
             .stat(Stat::Strength, 16)
@@ -72,7 +80,6 @@ mod tests {
             .saving_throw_proficiency(SavingThrow::Strength, true)
             .saving_throw_proficiency(SavingThrow::Constitution, true)
             .weapon_proficiency(WeaponType::Longsword, WeaponProficiency::Proficient)
-            .armor_class(16)
             .max_health(30)
             .level(3)
             .build();
@@ -89,7 +96,6 @@ mod tests {
             .movement_speed(30)
             .skill_proficiency(Skill::Stealth, SkillProficiency::Proficient)
             .saving_throw_proficiency(SavingThrow::Dexterity, true)
-            .armor_class(15)
             .max_health(13)
             .level(1)
             .build();

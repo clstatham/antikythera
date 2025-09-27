@@ -61,6 +61,46 @@ impl Integrator {
         }
     }
 
+    pub fn run(&mut self) -> anyhow::Result<StateTree> {
+        self.start_time = chrono::Utc::now();
+        let mut state_tree = StateTree::new(self.initial_state.clone());
+        let mut roller = self.roller.fork();
+        while self.should_continue() {
+            self.run_combat(roller.fork(), &mut state_tree)?;
+        }
+
+        Ok(state_tree)
+    }
+
+    pub fn run_combat(&mut self, roller: Roller, state_tree: &mut StateTree) -> anyhow::Result<()> {
+        let mut executor = Executor::new(roller, self.initial_state.clone());
+        executor.begin_combat()?;
+        let logs = executor.take_log();
+        let mut current_node = state_tree.root;
+        self.apply_logs(&mut current_node, state_tree, &mut executor, logs)?;
+        while !executor.state.is_combat_over() {
+            self.advance_turn(&mut executor, state_tree, &mut current_node)?;
+        }
+        executor.end_combat()?;
+        let logs = executor.take_log();
+        self.apply_logs(&mut current_node, state_tree, &mut executor, logs)?;
+
+        self.combats_run.fetch_add(1, Ordering::Relaxed);
+        Ok(())
+    }
+
+    fn advance_turn(
+        &mut self,
+        executor: &mut Executor,
+        state_tree: &mut StateTree,
+        current_node: &mut NodeIndex,
+    ) -> anyhow::Result<bool> {
+        let still_going = executor.advance_turn()?;
+        let logs = executor.take_log();
+        self.apply_logs(current_node, state_tree, executor, logs)?;
+        Ok(still_going)
+    }
+
     fn apply_logs(
         &mut self,
         current_node: &mut NodeIndex,
@@ -70,8 +110,7 @@ impl Integrator {
     ) -> anyhow::Result<()> {
         for entry in logs {
             if let LogEntry::Transition(transition) = entry {
-                let new_state = executor.state.get().clone();
-                let new_node = state_tree.add_node(new_state);
+                let new_node = state_tree.add_node(&executor.state);
                 transition.apply(ProtectedCell::get_mut(&mut executor.state))?;
                 state_tree.add_edge(*current_node, new_node, transition);
                 *current_node = new_node;
@@ -79,34 +118,5 @@ impl Integrator {
         }
 
         Ok(())
-    }
-
-    pub fn run(&mut self) -> anyhow::Result<StateTree> {
-        self.start_time = chrono::Utc::now();
-        let max_combats = self.min_combats;
-        let mut state_tree = StateTree::new(self.initial_state.clone());
-        let mut roller = self.roller.fork();
-        while self.combats_run.load(Ordering::Relaxed) < max_combats {
-            let mut executor = Executor::new(roller.fork(), self.initial_state.clone());
-            executor.begin_combat()?;
-            let logs = executor.take_log();
-            let mut current_node = state_tree.root;
-            self.apply_logs(&mut current_node, &mut state_tree, &mut executor, logs)?;
-            while !executor.state.is_combat_over() {
-                let still_going = executor.advance_turn()?;
-                let logs = executor.take_log();
-                self.apply_logs(&mut current_node, &mut state_tree, &mut executor, logs)?;
-                if !still_going {
-                    break;
-                }
-            }
-            executor.end_combat()?;
-            let logs = executor.take_log();
-            self.apply_logs(&mut current_node, &mut state_tree, &mut executor, logs)?;
-
-            self.combats_run.fetch_add(1, Ordering::Relaxed);
-        }
-
-        Ok(state_tree)
     }
 }

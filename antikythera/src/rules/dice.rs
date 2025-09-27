@@ -51,20 +51,8 @@ impl RollResult {
     }
 
     pub fn pretty_print(&self, f: &mut impl std::fmt::Write) -> std::fmt::Result {
-        write!(f, "Rolled {}", self.roll_used.num_dice)?;
-        write!(f, "d{}", self.roll_used.die_size)?;
-        if self.roll_used.modifier != 0 {
-            if self.roll_used.modifier > 0 {
-                write!(f, "+{}", self.roll_used.modifier)?;
-            } else {
-                write!(f, "-{}", -self.roll_used.modifier)?;
-            }
-        }
-        match self.roll_used.settings.advantage {
-            Advantage::Normal => {}
-            Advantage::Advantage => write!(f, " with advantage")?,
-            Advantage::Disadvantage => write!(f, " with disadvantage")?,
-        }
+        write!(f, "Rolled ")?;
+        self.roll_used.pretty_print(f)?;
         write!(f, ": [")?;
         for (i, roll) in self.individual_rolls.iter().enumerate() {
             if i > 0 {
@@ -178,6 +166,21 @@ impl RollPlan {
         } else {
             Ok(second_roll)
         }
+    }
+
+    pub fn pretty_print(&self, f: &mut impl std::fmt::Write) -> std::fmt::Result {
+        write!(f, "{}d{}", self.num_dice, self.die_size)?;
+        if self.modifier > 0 {
+            write!(f, "+{}", self.modifier)?;
+        } else if self.modifier < 0 {
+            write!(f, "{}", self.modifier)?;
+        }
+        match self.settings.advantage {
+            Advantage::Normal => {}
+            Advantage::Advantage => write!(f, " adv")?,
+            Advantage::Disadvantage => write!(f, " dis")?,
+        }
+        Ok(())
     }
 }
 

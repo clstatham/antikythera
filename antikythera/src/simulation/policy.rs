@@ -4,7 +4,7 @@ use crate::{
     rules::{
         actions::{Action, ActionEconomyUsage, ActionTaken, AttackAction, UnarmedStrikeAction},
         actor::ActorId,
-        items::ItemType,
+        items::ItemInner,
     },
     simulation::state::State,
     statistics::roller::Roller,
@@ -54,7 +54,7 @@ impl RandomPolicy {
 
         let mut weapon_used = None;
         for (item_id, entry) in actor.inventory.iter() {
-            if let ItemType::Weapon(_) = entry.item.item_type {
+            if let ItemInner::Weapon(_) = entry.item.inner {
                 weapon_used = Some(*item_id);
                 break;
             }

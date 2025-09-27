@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::rules::{
     actor::{Actor, ActorId},
-    items::{Item, ItemId, ItemType},
+    items::{Item, ItemId, ItemInner},
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Hash)]
@@ -47,13 +47,13 @@ impl State {
         actor_id
     }
 
-    pub fn add_item(&mut self, name: &str, item: ItemType) -> Item {
+    pub fn add_item(&mut self, name: &str, item: ItemInner) -> Item {
         let item_id = ItemId(self.next_item_id);
         self.next_item_id += 1;
         let item = Item {
             id: item_id,
             name: name.to_string(),
-            item_type: item,
+            inner: item,
         };
         self.items.insert(item_id, item.clone());
         item

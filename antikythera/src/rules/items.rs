@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use derive_more::{Deref, From, Into};
 use serde::{Deserialize, Serialize};
@@ -25,8 +25,16 @@ impl ItemId {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Ord, Eq, Hash, Serialize, Deserialize)]
 pub enum ItemType {
+    Potion,
+    Scroll,
+    Weapon,
+    Armor,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Hash)]
+pub enum ItemInner {
     Potion(Potion),
     Scroll(Scroll),
     Weapon(Weapon),
@@ -37,16 +45,25 @@ pub enum ItemType {
 pub struct Item {
     pub id: ItemId,
     pub name: String,
-    pub item_type: ItemType,
+    pub inner: ItemInner,
 }
 
 impl Item {
+    pub fn item_type(&self) -> ItemType {
+        match &self.inner {
+            ItemInner::Potion(_) => ItemType::Potion,
+            ItemInner::Scroll(_) => ItemType::Scroll,
+            ItemInner::Weapon(_) => ItemType::Weapon,
+            ItemInner::Armor(_) => ItemType::Armor,
+        }
+    }
+
     #[cfg(test)]
     pub fn test_sword() -> Self {
         Self {
             id: ItemId(1),
             name: "Test Sword".to_string(),
-            item_type: ItemType::Weapon(Weapon::test_sword()),
+            inner: ItemInner::Weapon(Weapon::test_sword()),
         }
     }
 }
@@ -323,20 +340,20 @@ pub enum EquipSlot {
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize, Hash)]
 pub struct EquippedItems {
-    pub slots: BTreeMap<EquipSlot, ItemId>,
+    pub items: BTreeSet<ItemId>,
 }
 
 impl EquippedItems {
-    pub fn equip(&mut self, slot: EquipSlot, item_id: ItemId) {
-        self.slots.insert(slot, item_id);
+    pub fn equip(&mut self, item_id: ItemId) {
+        self.items.insert(item_id);
     }
 
-    pub fn unequip(&mut self, slot: EquipSlot) -> Option<ItemId> {
-        self.slots.remove(&slot)
+    pub fn unequip(&mut self, item_id: ItemId) {
+        self.items.remove(&item_id);
     }
 
-    pub fn get_equipped(&self, slot: EquipSlot) -> Option<ItemId> {
-        self.slots.get(&slot).cloned()
+    pub fn is_equipped(&self, item_id: ItemId) -> bool {
+        self.items.contains(&item_id)
     }
 }
 

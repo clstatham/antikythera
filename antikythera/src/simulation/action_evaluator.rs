@@ -2,7 +2,7 @@ use crate::{
     rules::{
         actions::{Action, ActionTaken, AttackAction, UnarmedStrikeAction},
         actor::ActorId,
-        items::{ItemId, ItemType},
+        items::{ItemId, ItemInner},
     },
     simulation::{
         logging::{ExtraLogEntry, LogEntry},
@@ -111,7 +111,7 @@ impl ActionEvaluator {
                     })?
                     .item;
 
-                let ItemType::Weapon(weapon_used) = &weapon_used.item_type else {
+                let ItemInner::Weapon(weapon_used) = &weapon_used.inner else {
                     return Err(anyhow::anyhow!("Item used for attack is not a weapon"));
                 };
 

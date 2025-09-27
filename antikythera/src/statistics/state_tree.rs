@@ -59,10 +59,9 @@ impl StateTree {
         }
     }
 
-    pub fn add_node(&mut self, state: State) -> NodeIndex {
-        let node = Node::new(state);
+    pub fn add_node(&mut self, state: &State) -> NodeIndex {
         // Check if the node already exists
-        if let Some(&existing_index) = self.state_cache.get(&node.state) {
+        if let Some(&existing_index) = self.state_cache.get(state) {
             // Increment hits if it exists
             if let Some(existing_node) = self.graph.node_weight_mut(existing_index) {
                 existing_node.hits = existing_node.hits.saturating_add(1);
@@ -71,6 +70,7 @@ impl StateTree {
             existing_index
         } else {
             // Add the new node
+            let node = Node::new(state.clone());
             self.graph.add_node(node)
         }
     }
@@ -128,10 +128,6 @@ impl StateTree {
         }
     }
 
-    pub fn iter_nodes(&self) -> impl Iterator<Item = (NodeIndex, &Node)> {
-        self.graph.node_indices().map(move |i| (i, &self.graph[i]))
-    }
-
     pub fn compute_statistics(&self) -> StateTreeStats {
         let total_nodes = self.graph.node_count();
         let total_edges = self.graph.edge_count();
@@ -161,7 +157,8 @@ impl StateTree {
         let mut probability_graph = DiGraph::new();
         let mut node_map = FxHashMap::default();
 
-        for (index, node) in self.iter_nodes() {
+        for index in self.graph.node_indices() {
+            let node = &self.graph[index];
             // probability of reaching this node from its parent
             let probability = if index == self.root {
                 1.0
@@ -201,7 +198,6 @@ impl StateTree {
             } else {
                 0.0
             };
-            // let probability = edge_weight.hits.get() as f64 / self.graph[from].hits.get() as f64;
             let stat_edge = StateTreeStatEdge {
                 transition: edge_weight.transition.clone(),
                 hits: edge_weight.hits.get(),

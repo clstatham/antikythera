@@ -3,8 +3,9 @@ resolver = "2"
 members = [
     "antikythera",
     "antikythera-cli",
+    "antikythera-gui",
 ]
 
 
-[profile.release]
+[profile.release.package."antikythera"]
 debug = true

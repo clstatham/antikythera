@@ -45,7 +45,7 @@ pub fn demo_state() -> State {
         .critical_damage("2d8+3")
         .build();
 
-    let sword = state.add_item("Longsword", ItemType::Weapon(sword));
+    let sword = state.add_item("Longsword", ItemInner::Weapon(sword));
 
     let mut actor = ActorBuilder::new("Hero")
         .stat(Stat::Strength, 16)
@@ -59,8 +59,7 @@ pub fn demo_state() -> State {
         .saving_throw_proficiency(SavingThrow::Strength, true)
         .saving_throw_proficiency(SavingThrow::Constitution, true)
         .max_health(12)
-        .level(1)
-        .armor_class(18) // 10 + 3 (Chain Mail) + 2 (Shield) + 0 (Dex)
+        .level(1) // 10 + 3 (Chain Mail) + 2 (Shield) + 0 (Dex)
         .weapon_proficiency(WeaponType::Longsword, WeaponProficiency::Proficient)
         .build();
 
@@ -77,7 +76,6 @@ pub fn demo_state() -> State {
         .saving_throw_proficiency(SavingThrow::Dexterity, true)
         .max_health(7)
         .level(1)
-        .armor_class(15) // 10 + 2 (Leather) + 2 (Shield) + 1 (Dex)
         .build();
 
     let mut goblin2 = goblin1.clone();
@@ -115,6 +113,12 @@ fn main() -> anyhow::Result<()> {
         let reader = std::io::BufReader::new(state_file);
         serde_json::from_reader(reader)?
     };
+
+    let mut file = std::fs::File::create("used_state.json")?;
+    let writer = std::io::BufWriter::new(&mut file);
+    serde_json::to_writer_pretty(writer, &initial_state)?;
+    log::info!("Wrote used initial state to used_state.json");
+
     let mut integrator = Integrator::new(args.combats, roller, initial_state.clone());
 
     log::info!("Running {} combats...", args.combats);
