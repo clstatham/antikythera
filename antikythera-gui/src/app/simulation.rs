@@ -3,7 +3,7 @@ use std::sync::mpsc;
 use antikythera::prelude::*;
 use eframe::egui;
 
-use crate::app::scripting::{LuaHook, LuaHookHandle};
+use crate::app::scripting::simulation::{LuaHook, LuaHookHandle};
 
 const DEFAULT_HOOK_SCRIPT: &str = r#"-- Example Lua Hook Script
 -- The global table `metrics` is available to store custom metrics
@@ -40,7 +40,7 @@ end
 
 pub struct SimulationApp {
     pub state: Option<State>,
-    pub min_combats: usize,
+    pub combats: usize,
     progress: f64,
     progress_rx: Option<mpsc::Receiver<f64>>,
     result_rx: Option<mpsc::Receiver<IntegrationResults>>,
@@ -53,7 +53,7 @@ impl SimulationApp {
     pub fn new() -> Self {
         Self {
             state: None,
-            min_combats: 1000,
+            combats: 1000,
             progress: 0.0,
             progress_rx: None,
             result_rx: None,
@@ -68,7 +68,7 @@ impl SimulationApp {
             let roller = Roller::new();
             let (hook, hook_handle) = LuaHook::new(self.hook_script.clone());
             self.hook_handle = Some(hook_handle);
-            let mut integrator = Integrator::new(self.min_combats, roller, state.clone());
+            let mut integrator = Integrator::new(self.combats, roller, state.clone());
             integrator.add_hook(hook);
             let (progress_tx, progress_rx) = mpsc::channel();
             let (result_tx, result_rx) = mpsc::channel();
@@ -134,9 +134,9 @@ impl SimulationApp {
         }
 
         ui.horizontal(|ui| {
-            ui.label("Minimum Combats:");
+            ui.label("Combats:");
             ui.add(
-                egui::DragValue::new(&mut self.min_combats)
+                egui::DragValue::new(&mut self.combats)
                     .range(1..=100000)
                     .speed(1),
             );
@@ -145,10 +145,7 @@ impl SimulationApp {
         ui.separator();
 
         if ui.button("Start Simulation").clicked() && self.progress_rx.is_none() {
-            log::info!(
-                "Starting simulation with {} minimum combats",
-                self.min_combats
-            );
+            log::info!("Starting simulation with {} combats", self.combats);
             self.spawn_integrator();
         }
 
@@ -219,7 +216,40 @@ impl SimulationApp {
 
         // Display our hooks script
         egui::ScrollArea::vertical().show(ui, |ui| {
-            ui.label("Lua Hook Script:");
+            ui.horizontal(|ui| {
+                ui.label("Lua Hook Script:");
+                if ui.button("Load").clicked()
+                    && let Some(path) = rfd::FileDialog::new()
+                        .add_filter("Lua", &["lua"])
+                        .set_title("Select Lua Script")
+                        .pick_file()
+                {
+                    match std::fs::read_to_string(&path) {
+                        Ok(script) => {
+                            self.hook_script = script;
+                        }
+                        Err(e) => {
+                            log::error!("Failed to load script: {}", e);
+                        }
+                    }
+                }
+                if ui.button("Save").clicked()
+                    && let Some(path) = rfd::FileDialog::new()
+                        .add_filter("Lua", &["lua"])
+                        .set_title("Save Lua Script")
+                        .set_file_name("hook.lua")
+                        .save_file()
+                {
+                    match std::fs::write(&path, &self.hook_script) {
+                        Ok(_) => {
+                            log::info!("Script saved to {}", path.display());
+                        }
+                        Err(e) => {
+                            log::error!("Failed to save script: {}", e);
+                        }
+                    }
+                }
+            });
             let script_changed = ui
                 .add(
                     egui::TextEdit::multiline(&mut self.hook_script)

@@ -1,7 +1,7 @@
 use antikythera::prelude::*;
 use eframe::egui;
 
-use crate::app::scripting::AnalysisScriptInterface;
+use crate::app::scripting::analysis::AnalysisScriptInterface;
 
 pub struct Metric {
     pub query_name: String,
@@ -52,7 +52,86 @@ impl AnalysisApp {
             ));
 
             ui.separator();
-            self.script_interface.ui(ui, &self.stats, &mut self.metrics);
+
+            ui.horizontal(|ui| {
+                ui.label("Analysis Script:");
+                if ui.button("Load").clicked()
+                    && let Some(path) = rfd::FileDialog::new()
+                        .add_filter("Lua", &["lua"])
+                        .set_title("Select Lua Script")
+                        .pick_file()
+                {
+                    match std::fs::read_to_string(&path) {
+                        Ok(script) => {
+                            self.script_interface.query = script;
+                            self.script_interface.script_error = None;
+                        }
+                        Err(e) => {
+                            self.script_interface.script_error =
+                                Some(format!("Failed to load script: {}", e));
+                        }
+                    }
+                }
+                if ui.button("Save").clicked()
+                    && let Some(path) = rfd::FileDialog::new()
+                        .add_filter("Lua", &["lua"])
+                        .set_title("Save Lua Script")
+                        .set_file_name("analysis.lua")
+                        .save_file()
+                {
+                    match std::fs::write(&path, &self.script_interface.query) {
+                        Ok(_) => {}
+                        Err(e) => {
+                            self.script_interface.script_error =
+                                Some(format!("Failed to save script: {}", e));
+                        }
+                    }
+                }
+            });
+
+            ui.add(
+                egui::TextEdit::multiline(&mut self.script_interface.query)
+                    .code_editor()
+                    .desired_width(ui.available_width()),
+            );
+
+            ui.checkbox(
+                &mut self.script_interface.externals_only,
+                "Run on terminal states only",
+            );
+
+            if ui.button("Run Query").clicked()
+                && let Some(results) = self.stats.as_ref()
+            {
+                match self
+                    .script_interface
+                    .run_outcome_probability_query(&results.state_tree)
+                {
+                    Ok(probability) => {
+                        self.metrics.push(Metric {
+                            query_name: if self.script_interface.externals_only {
+                                format!(
+                                    "Terminal State Probability of:\n{}",
+                                    self.script_interface.query
+                                )
+                            } else {
+                                format!("State Probability of:\n{}", self.script_interface.query)
+                            },
+                            result: format!("{}%", probability * 100.0),
+                        });
+
+                        self.script_interface.script_error = None;
+                    }
+                    Err(e) => {
+                        self.script_interface.script_error =
+                            Some(format!("Error running query: {}", e));
+                    }
+                }
+            }
+
+            if let Some(error) = &self.script_interface.script_error {
+                ui.colored_label(egui::Color32::RED, error);
+            }
 
             ui.separator();
 
@@ -71,7 +150,12 @@ impl AnalysisApp {
                         }
                         for (name, value) in &stats.hook_metrics {
                             ui.label(name);
-                            ui.label(format!("{:.4}", value));
+                            ui.label(format!("{}", value));
+                            ui.end_row();
+                        }
+                        for (name, value) in &self.script_interface.metrics {
+                            ui.label(name);
+                            ui.label(format!("{}", value));
                             ui.end_row();
                         }
                     });

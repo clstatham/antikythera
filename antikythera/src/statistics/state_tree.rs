@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use crate::simulation::{state::State, transition::Transition};
 
 #[derive(Default)]
-pub struct NoHashHasher(u64);
+struct NoHashHasher(u64);
 
 impl std::hash::Hasher for NoHashHasher {
     fn finish(&self) -> u64 {
@@ -24,7 +24,7 @@ impl std::hash::Hasher for NoHashHasher {
     }
 }
 
-pub type NoHashBuildHasher = std::hash::BuildHasherDefault<NoHashHasher>;
+type NoHashBuildHasher = std::hash::BuildHasherDefault<NoHashHasher>;
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct StateHash(u64);
