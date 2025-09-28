@@ -1,10 +1,30 @@
-use std::{fmt::Debug, num::NonZeroU64};
+use std::{collections::HashMap, fmt::Debug, num::NonZeroU64};
 
 use petgraph::prelude::*;
-use rustc_hash::{FxHashMap, FxHashSet};
+use rustc_hash::FxHashSet;
 use serde::{Deserialize, Serialize};
 
 use crate::simulation::{state::State, transition::Transition};
+
+#[derive(Default)]
+pub struct NoHashHasher(u64);
+
+impl std::hash::Hasher for NoHashHasher {
+    fn finish(&self) -> u64 {
+        self.0
+    }
+
+    fn write_u64(&mut self, i: u64) {
+        self.0 = i;
+    }
+
+    fn write(&mut self, _bytes: &[u8]) {
+        #[cfg(debug_assertions)]
+        panic!("NoHashHasher only supports write_u64");
+    }
+}
+
+pub type NoHashBuildHasher = std::hash::BuildHasherDefault<NoHashHasher>;
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct StateHash(u64);
@@ -45,6 +65,18 @@ pub struct Edge {
     pub hits: NonZeroU64,
 }
 
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Serialize, Deserialize)]
+#[repr(transparent)]
+struct EdgeKey(u64);
+
+impl EdgeKey {
+    #[inline]
+    fn new(from: NodeIndex, to: NodeIndex) -> Self {
+        // Combine the two NodeIndex values into a single u64
+        EdgeKey(((from.index() as u64) << 32) | (to.index() as u64))
+    }
+}
+
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct StateTree {
     pub initial_state: State,
@@ -52,8 +84,8 @@ pub struct StateTree {
     pub root: NodeIndex,
     pub total_node_hits: u64,
     pub total_edge_hits: u64,
-    #[serde(skip)]
-    state_cache: FxHashMap<StateHash, NodeIndex>,
+    state_cache: HashMap<StateHash, NodeIndex, NoHashBuildHasher>,
+    edge_cache: HashMap<EdgeKey, EdgeIndex, NoHashBuildHasher>,
 }
 
 impl StateTree {
@@ -62,7 +94,7 @@ impl StateTree {
         let initial_node = Node::new(initial_state_hash);
         let mut graph = DiGraph::new();
         let root = graph.add_node(initial_node);
-        let mut state_cache = FxHashMap::default();
+        let mut state_cache = HashMap::default();
         state_cache.insert(initial_state_hash, root);
         Self {
             initial_state,
@@ -71,6 +103,7 @@ impl StateTree {
             total_node_hits: 0,
             total_edge_hits: 0,
             state_cache,
+            edge_cache: HashMap::default(),
         }
     }
 
@@ -98,7 +131,8 @@ impl StateTree {
         transition: Transition,
     ) -> Option<EdgeIndex> {
         // Check if the edge already exists
-        if let Some(existing_edge) = self.graph.find_edge(from, to) {
+        let key = EdgeKey::new(from, to);
+        if let Some(&existing_edge) = self.edge_cache.get(&key) {
             // Increment hits if it exists
             if let Some(edge) = self.graph.edge_weight_mut(existing_edge) {
                 edge.hits = edge.hits.saturating_add(1);
@@ -107,14 +141,16 @@ impl StateTree {
             Some(existing_edge)
         } else {
             // Add the new edge
-            Some(self.graph.add_edge(
+            let edge = self.graph.add_edge(
                 from,
                 to,
                 Edge {
                     transition,
                     hits: NonZeroU64::MIN, // Start with 1 hit
                 },
-            ))
+            );
+            self.edge_cache.insert(key, edge);
+            Some(edge)
         }
     }
 

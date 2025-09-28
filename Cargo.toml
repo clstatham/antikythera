@@ -5,3 +5,7 @@ members = [
   "antikythera-gui",
 ]
 resolver = "2"
+
+[profile."perf"]
+inherits = "release"
+debug = true
