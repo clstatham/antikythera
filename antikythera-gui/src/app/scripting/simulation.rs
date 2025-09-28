@@ -21,9 +21,9 @@ impl LuaHook {
         let (script_error_tx, script_error_rx) = crossbeam_channel::unbounded();
         let mut this = Self {
             lua: Lua::new(),
+            script,
             script_rx,
             script_error_tx,
-            script,
         };
         this.reset_lua();
 

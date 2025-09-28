@@ -3,9 +3,15 @@ use mlua::prelude::*;
 
 use crate::app::scripting::LuaState;
 
+const DEFAULT_QUERY_SCRIPT: &str = r#"function query(state)
+    -- Example: check if the actor named "Hero" is alive
+    return state:actor_alive("Hero")
+end"#;
+
 pub struct AnalysisScriptInterface {
     lua: Lua,
     pub query: String,
+    pub last_saved_query: Option<String>,
     pub externals_only: bool,
     pub script_error: Option<String>,
     pub metrics: Vec<(String, f64)>,
@@ -21,15 +27,19 @@ impl AnalysisScriptInterface {
     pub fn new() -> Self {
         Self {
             lua: Lua::new(),
-            query: String::from(
-                r#"function query(state)
-    -- Example: check if the actor named "Hero" is alive
-    return state:actor_alive("Hero")
-end"#,
-            ),
+            query: String::from(DEFAULT_QUERY_SCRIPT),
+            last_saved_query: Some(String::from(DEFAULT_QUERY_SCRIPT)),
             externals_only: true,
             script_error: None,
             metrics: Vec::new(),
+        }
+    }
+
+    pub fn has_unsaved_changes(&self) -> bool {
+        if let Some(last) = &self.last_saved_query {
+            &self.query != last
+        } else {
+            true
         }
     }
 

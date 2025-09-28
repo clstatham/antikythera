@@ -46,6 +46,7 @@ pub struct SimulationApp {
     result_rx: Option<mpsc::Receiver<IntegrationResults>>,
     pub stats: Option<IntegrationResults>,
     pub hook_script: String,
+    pub last_saved_hook_script: Option<String>,
     pub hook_handle: Option<LuaHookHandle>,
 }
 
@@ -60,6 +61,15 @@ impl SimulationApp {
             stats: None,
             hook_handle: None,
             hook_script: String::from(DEFAULT_HOOK_SCRIPT),
+            last_saved_hook_script: Some(String::from(DEFAULT_HOOK_SCRIPT)),
+        }
+    }
+
+    pub fn has_unsaved_changes(&self) -> bool {
+        if let Some(last) = &self.last_saved_hook_script {
+            &self.hook_script != last
+        } else {
+            true
         }
     }
 
@@ -218,18 +228,31 @@ impl SimulationApp {
         egui::ScrollArea::vertical().show(ui, |ui| {
             ui.horizontal(|ui| {
                 ui.label("Lua Hook Script:");
-                if ui.button("Load").clicked()
-                    && let Some(path) = rfd::FileDialog::new()
-                        .add_filter("Lua", &["lua"])
-                        .set_title("Select Lua Script")
-                        .pick_file()
-                {
-                    match std::fs::read_to_string(&path) {
-                        Ok(script) => {
-                            self.hook_script = script;
-                        }
-                        Err(e) => {
-                            log::error!("Failed to load script: {}", e);
+                if ui.button("Load").clicked() {
+                    let should_continue = if self.has_unsaved_changes() {
+                        crate::app::unsaved_changes_dialog()
+                    } else {
+                        true
+                    };
+                    if should_continue
+                        && let Some(path) = rfd::FileDialog::new()
+                            .add_filter("Lua", &["lua"])
+                            .set_title("Select Lua Script")
+                            .pick_file()
+                    {
+                        match std::fs::read_to_string(&path) {
+                            Ok(script) => {
+                                self.hook_script = script;
+                                self.last_saved_hook_script = None;
+                                if let Some(handle) = &self.hook_handle
+                                    && let Err(e) = handle.script_tx.send(self.hook_script.clone())
+                                {
+                                    log::error!("Failed to send script to hook: {}", e);
+                                }
+                            }
+                            Err(e) => {
+                                log::error!("Failed to load script: {}", e);
+                            }
                         }
                     }
                 }
@@ -242,6 +265,7 @@ impl SimulationApp {
                 {
                     match std::fs::write(&path, &self.hook_script) {
                         Ok(_) => {
+                            self.last_saved_hook_script = Some(self.hook_script.clone());
                             log::info!("Script saved to {}", path.display());
                         }
                         Err(e) => {

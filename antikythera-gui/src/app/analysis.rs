@@ -55,20 +55,30 @@ impl AnalysisApp {
 
             ui.horizontal(|ui| {
                 ui.label("Analysis Script:");
-                if ui.button("Load").clicked()
-                    && let Some(path) = rfd::FileDialog::new()
-                        .add_filter("Lua", &["lua"])
-                        .set_title("Select Lua Script")
-                        .pick_file()
-                {
-                    match std::fs::read_to_string(&path) {
-                        Ok(script) => {
-                            self.script_interface.query = script;
-                            self.script_interface.script_error = None;
-                        }
-                        Err(e) => {
-                            self.script_interface.script_error =
-                                Some(format!("Failed to load script: {}", e));
+                if ui.button("Load").clicked() {
+                    let should_continue = if self.script_interface.has_unsaved_changes() {
+                        crate::app::unsaved_changes_dialog()
+                    } else {
+                        true
+                    };
+
+                    if should_continue
+                        && let Some(path) = rfd::FileDialog::new()
+                            .add_filter("Lua", &["lua"])
+                            .set_title("Select Lua Script")
+                            .pick_file()
+                    {
+                        match std::fs::read_to_string(&path) {
+                            Ok(script) => {
+                                self.script_interface.query = script;
+                                self.script_interface.last_saved_query =
+                                    Some(self.script_interface.query.clone());
+                                self.script_interface.script_error = None;
+                            }
+                            Err(e) => {
+                                self.script_interface.script_error =
+                                    Some(format!("Failed to load script: {}", e));
+                            }
                         }
                     }
                 }
@@ -80,7 +90,11 @@ impl AnalysisApp {
                         .save_file()
                 {
                     match std::fs::write(&path, &self.script_interface.query) {
-                        Ok(_) => {}
+                        Ok(_) => {
+                            self.script_interface.last_saved_query =
+                                Some(self.script_interface.query.clone());
+                            self.script_interface.script_error = None;
+                        }
                         Err(e) => {
                             self.script_interface.script_error =
                                 Some(format!("Failed to save script: {}", e));

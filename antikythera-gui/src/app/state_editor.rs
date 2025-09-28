@@ -47,7 +47,7 @@ impl StateEditorApp {
                 }
             }
 
-            if ui.button("Load State").clicked() {
+            if ui.button("Load").clicked() {
                 let should_proceed = if let Some(state) = &self.state
                     && self.has_unsaved_changes(state)
                 {
@@ -69,7 +69,7 @@ impl StateEditorApp {
                 }
             }
 
-            if ui.button("Save State").clicked()
+            if ui.button("Save").clicked()
                 && let Some(state) = &self.state
             {
                 let dialog = rfd::FileDialog::new();
