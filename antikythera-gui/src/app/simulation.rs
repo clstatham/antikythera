@@ -6,38 +6,34 @@ use eframe::egui;
 use crate::app::scripting::{LuaHook, LuaHookHandle};
 
 const DEFAULT_HOOK_SCRIPT: &str = r#"-- Example Lua Hook Script
+-- The global table `metrics` is available to store custom metrics
+
 function on_integration_start(initial_state)
-    metrics["combats_started"] = 0
-    metrics["actions_executed"] = 0
+    -- Initialize any state or metrics here
 end
 
 function on_combat_start(state)
-    print("Combat started with " .. #state.actors .. " actors.")
-    metrics["combats_started"] = metrics["combats_started"] + 1
+    -- Called at the start of each combat
 end
 
 function on_turn_start(state, actor_id, turn)
-    print("Turn " .. turn .. " started for actor " .. actor_id)
+    -- Called at the start of each turn
 end
 
 function on_action_executed(state, action)
-    print("Action executed: " .. action.action_type)
-    metrics["actions_executed"] = metrics["actions_executed"] + 1
+    -- Called after an action is executed
 end
 
 function on_turn_end(state, actor_id, turn)
-    print("Turn " .. turn .. " ended for actor " .. actor_id)
+    -- Called at the end of each turn
 end
 
 function on_combat_end(state)
-    print("Combat ended.")
+    -- Called at the end of each combat
 end
 
 function on_integration_end()
-    print("Integration ended.")
-    for k, v in pairs(metrics) do
-        print(k .. ": " .. v)
-    end
+    -- Finalize metrics here
 end
 
 "#;
@@ -222,16 +218,22 @@ impl SimulationApp {
         ui.separator();
 
         // Display our hooks script
-        ui.label("Lua Hook Script:");
-        let script_changed = ui
-            .add(egui::TextEdit::multiline(&mut self.hook_script).code_editor())
-            .changed();
-        if script_changed
-            && let Some(handle) = &self.hook_handle
-            && let Err(e) = handle.script_tx.send(self.hook_script.clone())
-        {
-            log::error!("Failed to send script to hook: {}", e);
-        }
+        egui::ScrollArea::vertical().show(ui, |ui| {
+            ui.label("Lua Hook Script:");
+            let script_changed = ui
+                .add(
+                    egui::TextEdit::multiline(&mut self.hook_script)
+                        .desired_width(ui.available_width())
+                        .code_editor(),
+                )
+                .changed();
+            if script_changed
+                && let Some(handle) = &self.hook_handle
+                && let Err(e) = handle.script_tx.send(self.hook_script.clone())
+            {
+                log::error!("Failed to send script to hook: {}", e);
+            }
+        });
     }
 }
 
