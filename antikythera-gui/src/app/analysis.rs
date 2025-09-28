@@ -1,9 +1,7 @@
 use antikythera::prelude::*;
 use eframe::egui;
 
-use crate::app::analysis::scripting::ScriptInterface;
-
-pub mod scripting;
+use crate::app::scripting::AnalysisScriptInterface;
 
 pub struct Metric {
     pub query_name: String,
@@ -12,9 +10,9 @@ pub struct Metric {
 
 #[derive(Default)]
 pub struct AnalysisApp {
-    pub stats: Option<StateTree>,
+    pub stats: Option<IntegrationResults>,
     metrics: Vec<Metric>,
-    script_interface: ScriptInterface,
+    script_interface: AnalysisScriptInterface,
 }
 
 impl AnalysisApp {
@@ -31,9 +29,9 @@ impl AnalysisApp {
                 .set_title("Select Results File")
                 .pick_file()
         {
-            match std::fs::read_to_string(&path)
-                .and_then(|data| serde_json::from_str::<StateTree>(&data).map_err(|e| e.into()))
-            {
+            match std::fs::read_to_string(&path).and_then(|data| {
+                serde_json::from_str::<IntegrationResults>(&data).map_err(|e| e.into())
+            }) {
                 Ok(stats) => {
                     self.stats = Some(stats);
                 }
@@ -50,7 +48,7 @@ impl AnalysisApp {
         if let Some(stats) = &self.stats {
             ui.label(format!(
                 "Loaded state tree with {} nodes",
-                stats.graph.node_count()
+                stats.state_tree.graph.node_count()
             ));
 
             ui.separator();
@@ -69,6 +67,11 @@ impl AnalysisApp {
                         for metric in &self.metrics {
                             ui.label(&metric.query_name);
                             ui.label(&metric.result);
+                            ui.end_row();
+                        }
+                        for (name, value) in &stats.hook_metrics {
+                            ui.label(name);
+                            ui.label(format!("{:.4}", value));
                             ui.end_row();
                         }
                     });

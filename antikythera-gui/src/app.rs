@@ -2,6 +2,7 @@ use antikythera::prelude::*;
 use eframe::egui;
 
 pub mod analysis;
+pub mod scripting;
 pub mod simulation;
 pub mod state_editor;
 
@@ -18,7 +19,7 @@ pub enum AppMode {
 pub struct App {
     pub mode: AppMode,
     pub state: Option<State>,
-    pub stats: Option<StateTree>,
+    pub stats: Option<IntegrationResults>,
     pub state_editor_app: state_editor::StateEditorApp,
     pub simulation_app: simulation::SimulationApp,
     pub analysis_app: analysis::AnalysisApp,

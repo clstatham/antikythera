@@ -114,7 +114,7 @@ fn main() -> anyhow::Result<()> {
 
     log::info!("Running {} combats...", args.combats);
 
-    let state_tree = integrator.run()?;
+    let results = integrator.run()?;
 
     log::info!(
         "Simulation complete: {} combats run in {} seconds ({:.2} combats/sec)",
@@ -125,8 +125,8 @@ fn main() -> anyhow::Result<()> {
 
     let stats_file = std::fs::File::create(&args.output)?;
     let writer = std::io::BufWriter::new(stats_file);
-    serde_json::to_writer(writer, &state_tree)?;
-    log::info!("State tree written to {}", args.output.display());
+    serde_json::to_writer(writer, &results)?;
+    log::info!("Results written to {}", args.output.display());
 
     Ok(())
 }

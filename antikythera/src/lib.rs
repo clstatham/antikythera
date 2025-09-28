@@ -7,7 +7,7 @@ pub mod utils;
 pub mod prelude {
     pub use crate::{
         rules::{
-            actions::ActionEconomyUsage,
+            actions::{Action, ActionEconomyUsage, ActionTaken, ActionType},
             actor::{Actor, ActorBuilder, ActorId},
             damage::DamageType,
             dice::{RollPlan, RollResult, RollSettings},
@@ -28,7 +28,13 @@ pub mod prelude {
             state::State,
             transition::Transition,
         },
-        statistics::{integration::Integrator, query::*, roller::Roller, state_tree::StateTree},
+        statistics::{
+            hook::Hook,
+            integration::{IntegrationResults, Integrator},
+            query::*,
+            roller::Roller,
+            state_tree::StateTree,
+        },
     };
 }
 
@@ -105,22 +111,22 @@ mod tests {
 
         let roller = Roller::new();
         let mut integrator = Integrator::new(100, roller, state);
-        let state_tree = integrator.run()?;
+        let results = integrator.run()?;
 
         let query = OutcomeConditionProbability::new(move |state: &State| {
             state.get_actor(hero).map(|a| a.is_alive()).unwrap()
         });
-        let prob = query.query(&state_tree)?;
+        let prob = query.query(&results.state_tree)?;
         println!("Probability that hero is alive: {:.2}%", prob * 100.0);
         let query = OutcomeConditionProbability::new(move |state: &State| {
             state.get_actor(goblin).map(|a| a.is_alive()).unwrap()
         });
-        let prob = query.query(&state_tree)?;
+        let prob = query.query(&results.state_tree)?;
         println!("Probability that goblin 1 is alive: {:.2}%", prob * 100.0);
         let query = OutcomeConditionProbability::new(move |state: &State| {
             state.get_actor(goblin2).map(|a| a.is_alive()).unwrap()
         });
-        let prob = query.query(&state_tree)?;
+        let prob = query.query(&results.state_tree)?;
         println!("Probability that goblin 2 is alive: {:.2}%", prob * 100.0);
 
         Ok(())
