@@ -235,7 +235,11 @@ end"#,
         ui.label(
             "Enter a Lua function that takes a state and returns true or false. The query will compute the probability of the function returning true.",
         );
-        ui.add(egui::TextEdit::multiline(&mut self.query).code_editor());
+        ui.add(
+            egui::TextEdit::multiline(&mut self.query)
+                .code_editor()
+                .desired_width(ui.available_width()),
+        );
         ui.checkbox(&mut self.externals_only, "Run on outcomes only");
         if ui.button("Run Query").clicked()
             && let Some(results) = state_tree

@@ -1,11 +1,7 @@
 [workspace]
-resolver = "2"
 members = [
-    "antikythera",
-    "antikythera-cli",
-    "antikythera-gui",
+  "antikythera",
+  "antikythera-cli",
+  "antikythera-gui",
 ]
-
-
-[profile.release.package."antikythera"]
-debug = true
+resolver = "2"
