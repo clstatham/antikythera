@@ -103,11 +103,26 @@ impl AnalysisApp {
                 }
             });
 
-            ui.add(
-                egui::TextEdit::multiline(&mut self.script_interface.query)
-                    .code_editor()
-                    .desired_width(ui.available_width()),
-            );
+            let text_editor_output =
+                crate::app::lua_editor().show(ui, &mut self.script_interface.query);
+            if text_editor_output.response.changed() {
+                // Clear previous error if any
+                self.script_interface.script_error = None;
+            }
+
+            // Run query on Ctrl+Enter
+            if text_editor_output.response.has_focus()
+                && ui.input(|i| i.key_pressed(egui::Key::Enter) && i.modifiers.ctrl)
+            {
+                text_editor_output.response.request_focus(); // keep focus after Ctrl+Enter
+                if let Err(e) = self
+                    .script_interface
+                    .run_outcome_probability_query(&stats.state_tree)
+                {
+                    self.script_interface.script_error =
+                        Some(format!("Error running query: {}", e));
+                }
+            }
 
             ui.checkbox(
                 &mut self.script_interface.externals_only,

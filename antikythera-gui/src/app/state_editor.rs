@@ -7,6 +7,7 @@ use crate::app::unsaved_changes_dialog;
 struct StateEditorUiState {
     inventory_item_to_add: ItemId,
     name_editing: Option<(u32, String)>,
+    state_json: serde_json::Value,
 }
 
 #[derive(Default)]
@@ -58,10 +59,15 @@ impl StateEditorApp {
                 if should_proceed {
                     let dialog = rfd::FileDialog::new();
                     if let Some(path) = dialog.pick_file() {
-                        let mut file = std::fs::File::open(&path).unwrap();
-                        if let Ok(loaded_state) = serde_json::from_reader(&mut file) {
+                        let source = std::fs::read_to_string(&path).unwrap();
+                        let res: Result<serde_json::Value, _> = serde_json::from_str(&source);
+                        if let Ok(state_json) = res
+                            && let Ok(loaded_state) =
+                                serde_json::from_value::<State>(state_json.clone())
+                        {
                             self.state = Some(loaded_state);
                             self.last_saved_state = self.state.clone();
+                            self.ui_state.state_json = state_json;
                         } else {
                             log::error!("Failed to load state from file: {}", path.display());
                         }
@@ -353,9 +359,6 @@ impl StateEditorApp {
         (remove, clone)
     }
 
-    // NOTE: These two functions NO LONGER create their own ScrollAreas.
-    // The scroll is now provided by the pane that contains them, so they
-    // can expand naturally to the full height of the strip cell.
     fn actors_list_ui(ui: &mut egui::Ui, state: &mut State, ui_state: &mut StateEditorUiState) {
         egui::CollapsingHeader::new("Actors")
             .default_open(false)
@@ -556,6 +559,14 @@ impl StateEditorApp {
             }); // end CollapsingHeader for Items
     }
 
+    fn state_json_ui(ui: &mut egui::Ui, _state: &mut State, ui_state: &mut StateEditorUiState) {
+        let response = egui_json_tree::JsonTree::new("state-json", &ui_state.state_json)
+            .style(egui_json_tree::JsonTreeStyle::new())
+            .default_expand(egui_json_tree::DefaultExpand::All)
+            .show(ui);
+        // if response.
+    }
+
     fn state_ui(&mut self, ui: &mut egui::Ui) {
         let Some(state) = &mut self.state else {
             ui.label("No state loaded. Create or load a state to begin editing.");
@@ -570,6 +581,8 @@ impl StateEditorApp {
             egui_extras::StripBuilder::new(ui)
                 .size(egui_extras::Size::remainder())
                 .size(egui_extras::Size::remainder())
+                .size(egui_extras::Size::exact(10.0)) // spacer
+                .size(egui_extras::Size::remainder()) // JSON editor
                 .horizontal(|mut strip| {
                     // Left pane (Actors)
                     strip.cell(|ui| {
@@ -588,7 +601,7 @@ impl StateEditorApp {
                         );
                     });
 
-                    // Right pane (Items)
+                    // Middle pane (Items)
                     strip.cell(|ui| {
                         let avail = ui.available_size();
                         ui.allocate_ui_with_layout(
@@ -599,6 +612,45 @@ impl StateEditorApp {
                                     ui,
                                     |ui| {
                                         Self::items_list_ui(ui, state, &mut self.ui_state);
+                                    },
+                                );
+                            },
+                        );
+                    });
+
+                    // Spacer
+                    strip.cell(|ui| {
+                        ui.vertical(|ui| {
+                            if ui.small_button(">").clicked() {
+                                self.ui_state.state_json =
+                                    serde_json::to_value(&state).unwrap_or_default();
+                            }
+                            if ui.small_button("<").clicked() {
+                                match serde_json::from_value::<State>(
+                                    self.ui_state.state_json.clone(),
+                                ) {
+                                    Ok(loaded_state) => {
+                                        *state = loaded_state;
+                                    }
+                                    Err(e) => {
+                                        log::error!("Failed to parse state JSON: {}", e);
+                                    }
+                                }
+                            }
+                        });
+                    });
+
+                    // Right pane (State JSON)
+                    strip.cell(|ui| {
+                        let avail = ui.available_size();
+                        ui.allocate_ui_with_layout(
+                            avail,
+                            egui::Layout::top_down(egui::Align::Min),
+                            |ui| {
+                                egui::ScrollArea::vertical().auto_shrink([false; 2]).show(
+                                    ui,
+                                    |ui| {
+                                        Self::state_json_ui(ui, state, &mut self.ui_state);
                                     },
                                 );
                             },

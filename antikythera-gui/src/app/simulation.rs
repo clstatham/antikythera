@@ -274,14 +274,9 @@ impl SimulationApp {
                     }
                 }
             });
-            let script_changed = ui
-                .add(
-                    egui::TextEdit::multiline(&mut self.hook_script)
-                        .desired_width(ui.available_width())
-                        .code_editor(),
-                )
-                .changed();
-            if script_changed
+            let text_editor = crate::app::lua_editor().show(ui, &mut self.hook_script);
+
+            if text_editor.response.changed()
                 && let Some(handle) = &self.hook_handle
                 && let Err(e) = handle.script_tx.send(self.hook_script.clone())
             {

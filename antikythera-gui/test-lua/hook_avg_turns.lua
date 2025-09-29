@@ -2,7 +2,6 @@
 
 turn_counter = 0
 combat_counter = 0
-metrics = {}
 
 function on_integration_start(initial_state)
     -- Initialize any state or metrics here

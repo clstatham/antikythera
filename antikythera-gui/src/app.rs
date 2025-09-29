@@ -155,3 +155,14 @@ pub fn unsaved_changes_dialog() -> bool {
         .show();
     confirm == rfd::MessageDialogResult::Yes
 }
+
+pub fn lua_editor() -> egui_code_editor::CodeEditor {
+    egui_code_editor::CodeEditor::default()
+        .with_syntax(egui_code_editor::Syntax::lua())
+        .with_theme(egui_code_editor::ColorTheme::GITHUB_DARK)
+        .desired_width(f32::INFINITY)
+        .with_rows(20)
+        .with_numlines(true)
+        .with_fontsize(14.0)
+        .vscroll(true)
+}
