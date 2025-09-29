@@ -195,7 +195,7 @@ impl ActionEconomy {
 pub struct ActionTaken {
     pub actor: ActorId,
     pub action: Action,
-    pub action_type: ActionEconomyUsage,
+    pub action_economy_usage: ActionEconomyUsage,
 }
 
 impl ActionTaken {

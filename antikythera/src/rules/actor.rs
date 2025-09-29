@@ -2,7 +2,7 @@ use derive_more::{From, Into};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    prelude::ItemId,
+    prelude::{ItemId, Policy},
     rules::{
         actions::ActionEconomy,
         death::DeathSaves,
@@ -58,6 +58,7 @@ impl ActorBuilder {
                 equipped_items: EquippedItems::default(),
                 inventory: Inventory::default(),
                 weapon_proficiencies: WeaponProficiencies::default(),
+                policy: Policy::default(),
             },
         }
     }
@@ -159,6 +160,7 @@ pub struct Actor {
     pub equipped_items: EquippedItems,
     pub inventory: Inventory,
     pub weapon_proficiencies: WeaponProficiencies,
+    pub policy: Policy,
 }
 
 impl Actor {
@@ -325,6 +327,7 @@ impl Actor {
             equipped_items: EquippedItems::default(),
             inventory: Inventory::default(),
             weapon_proficiencies: WeaponProficiencies::default(),
+            policy: Policy::default(),
         }
     }
 }

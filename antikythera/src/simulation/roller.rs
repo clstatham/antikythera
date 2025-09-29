@@ -1,5 +1,7 @@
 use rand::{Rng, SeedableRng, rngs::StdRng};
 
+use crate::{prelude::RollPlan, rules::dice::RollResult};
+
 #[derive(Debug)]
 pub struct Roller {
     rng: StdRng,
@@ -30,8 +32,12 @@ impl Roller {
         self.rng.random_range(1..=die_size)
     }
 
-    pub fn roll(&mut self, min: u32, max: u32) -> u32 {
+    pub fn range(&mut self, min: u32, max: u32) -> u32 {
         self.rng.random_range(min..=max)
+    }
+
+    pub fn roll(&mut self, roll: &RollPlan) -> anyhow::Result<RollResult> {
+        roll.roll(self)
     }
 
     pub fn rng(&mut self) -> &mut StdRng {

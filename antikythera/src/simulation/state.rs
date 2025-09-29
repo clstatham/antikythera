@@ -2,9 +2,12 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use serde::{Deserialize, Serialize};
 
-use crate::rules::{
-    actor::{Actor, ActorId},
-    items::{Item, ItemId, ItemInner},
+use crate::{
+    prelude::{ActionEconomyUsage, ActionType, Policy},
+    rules::{
+        actor::{Actor, ActorId},
+        items::{Item, ItemId, ItemInner},
+    },
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Hash)]
@@ -57,6 +60,12 @@ impl State {
         item_id
     }
 
+    pub fn set_actor_policy(&mut self, actor_id: ActorId, policy: Policy) {
+        if let Some(actor) = self.actors.get_mut(&actor_id) {
+            actor.policy = policy;
+        }
+    }
+
     pub fn get_actor(&self, actor_id: ActorId) -> Option<&Actor> {
         self.actors.get(&actor_id)
     }
@@ -99,6 +108,7 @@ impl State {
     pub fn are_enemies(&self, actor1: ActorId, actor2: ActorId) -> bool {
         !self.are_allies(actor1, actor2)
     }
+
     pub fn is_combat_over(&self) -> bool {
         // combat is over when only one allied group remains alive
         let mut living_groups = BTreeSet::new();
@@ -108,5 +118,33 @@ impl State {
             }
         }
         living_groups.len() <= 1
+    }
+
+    pub fn possible_targets(&self, actor_id: ActorId) -> Vec<ActorId> {
+        self.enemies_of(actor_id)
+    }
+
+    pub fn possible_actions(&self, actor_id: ActorId) -> Vec<ActionType> {
+        if let Some(actor) = self.actors.get(&actor_id) {
+            let mut actions = vec![ActionType::Wait]; // can always wait
+
+            if actor
+                .action_economy
+                .can_take_action(ActionEconomyUsage::Action)
+            {
+                actions.push(ActionType::Attack);
+                actions.push(ActionType::CastSpell);
+                actions.push(ActionType::UseItem);
+                actions.push(ActionType::Dash);
+                actions.push(ActionType::Disengage);
+                actions.push(ActionType::Dodge);
+                actions.push(ActionType::Help);
+                actions.push(ActionType::UnarmedStrike);
+            }
+
+            actions
+        } else {
+            vec![]
+        }
     }
 }

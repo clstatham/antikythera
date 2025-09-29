@@ -1,4 +1,4 @@
-use crate::{simulation::state::State, statistics::state_tree::StateTree};
+use crate::simulation::{state::State, state_tree::StateTree};
 
 pub trait Query {
     type Output;

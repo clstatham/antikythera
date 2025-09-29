@@ -29,7 +29,7 @@ pub enum TransitionType {
 ///
 /// Transitions should be deterministic and side-effect free.
 /// This means that transitions should not contain any random elements or references to external state.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, Eq, Hash)]
 pub enum Transition {
     Root,
     BeginCombat,

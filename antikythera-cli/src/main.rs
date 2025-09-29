@@ -76,9 +76,37 @@ pub fn demo_state() -> State {
     goblin1.give_item(sword, 1);
     goblin2.give_item(sword, 1);
 
-    let _hero = state.add_actor(hero);
-    let _goblin1 = state.add_actor(goblin1);
-    let _goblin2 = state.add_actor(goblin2);
+    let hero = state.add_actor(hero);
+    let goblin1 = state.add_actor(goblin1);
+    let goblin2 = state.add_actor(goblin2);
+
+    state.set_actor_policy(
+        hero,
+        PolicyBuilder::new()
+            .action_weight(ActionType::Attack, 10)
+            .action_weight(ActionType::UnarmedStrike, 1)
+            .target_weight(goblin1, 5)
+            .target_weight(goblin2, 5)
+            .build(),
+    );
+
+    state.set_actor_policy(
+        goblin1,
+        PolicyBuilder::new()
+            .action_weight(ActionType::Attack, 10)
+            .action_weight(ActionType::UnarmedStrike, 1)
+            .target_weight(hero, 10)
+            .build(),
+    );
+
+    state.set_actor_policy(
+        goblin2,
+        PolicyBuilder::new()
+            .action_weight(ActionType::Attack, 10)
+            .action_weight(ActionType::UnarmedStrike, 1)
+            .target_weight(hero, 10)
+            .build(),
+    );
 
     state
 }
@@ -118,9 +146,9 @@ fn main() -> anyhow::Result<()> {
 
     log::info!(
         "Simulation complete: {} combats run in {} seconds ({:.2} combats/sec)",
-        integrator.combats_run(),
-        integrator.elapsed_time().to_std().unwrap().as_secs_f64(),
-        integrator.combats_per_second()
+        results.combats_run,
+        results.elapsed_time.num_seconds(),
+        results.combats_per_second()
     );
 
     let stats_file = std::fs::File::create(&args.output)?;

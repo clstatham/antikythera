@@ -85,7 +85,6 @@ impl SimulationApp {
             let mut state_tree = StateTree::new(state.clone());
             integrator.start_time = chrono::Utc::now();
             std::thread::spawn({
-                let mut roller = integrator.roller.fork();
                 move || {
                     let total = integrator.min_combats as f64;
                     let mut last_reported = 0.0;
@@ -93,7 +92,7 @@ impl SimulationApp {
                         hook.on_integration_start(&integrator.initial_state);
                     }
                     while integrator.should_continue() {
-                        integrator.run_combat(roller.fork(), &mut state_tree).ok();
+                        integrator.run_combat(&mut state_tree).ok();
                         let completed = integrator.combats_run() as f64;
                         let progress = completed / total;
                         if (progress - last_reported) >= 0.01 || progress == 1.0 {
@@ -116,7 +115,7 @@ impl SimulationApp {
                     let results = IntegrationResults {
                         state_tree: state_tree.clone(),
                         combats_run: integrator.combats_run(),
-                        elapsed,
+                        elapsed_time: elapsed,
                         hook_metrics,
                     };
 

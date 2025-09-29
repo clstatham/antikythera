@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::statistics::roller::Roller;
+use crate::simulation::roller::Roller;
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Hash)]
 pub enum Advantage {
@@ -101,7 +101,7 @@ impl RollPlan {
         let mut crit_failure_count = 0;
 
         for _ in 0..self.num_dice {
-            let roll = rng.roll(low, self.die_size);
+            let roll = rng.range(low, self.die_size);
             let clamped_roll = roll.clamp(clamp_min, clamp_max);
             individual_rolls.push(clamped_roll);
             total += clamped_roll as i32;

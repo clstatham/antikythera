@@ -1,7 +1,6 @@
 pub mod roll_parser;
 pub mod rules;
 pub mod simulation;
-pub mod statistics;
 pub mod utils;
 
 pub mod prelude {
@@ -21,19 +20,14 @@ pub mod prelude {
             stats::Stat,
         },
         simulation::{
-            action_evaluator::ActionEvaluator,
-            executor::Executor,
-            logging::{LogEntry, SimulationLog},
-            policy::{Policy, RandomPolicy},
-            state::State,
-            transition::Transition,
-        },
-        statistics::{
             hook::Hook,
             integration::{IntegrationResults, Integrator},
+            policy::{Policy, PolicyBuilder},
             query::*,
             roller::Roller,
+            state::State,
             state_tree::StateTree,
+            transition::Transition,
         },
     };
 }
@@ -48,11 +42,11 @@ mod tests {
             skills::{Skill, SkillProficiency},
             stats::Stat,
         },
-        simulation::state::State,
-        statistics::{
+        simulation::{
             integration::Integrator,
             query::{OutcomeConditionProbability, Query},
             roller::Roller,
+            state::State,
         },
     };
 
