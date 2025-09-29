@@ -120,6 +120,22 @@ impl StateTree {
         this
     }
 
+    pub fn add_state(&mut self, state: &State) -> NodeIndex {
+        let state_hash = StateHash::hash_state(state);
+        self.add_node(state_hash)
+    }
+
+    pub fn add_transition(
+        &mut self,
+        from: NodeIndex,
+        new_state: &State,
+        transition: Transition,
+    ) -> NodeIndex {
+        let to = self.add_state(new_state);
+        self.add_edge(from, to, transition);
+        to
+    }
+
     pub fn add_node(&mut self, state_hash: StateHash) -> NodeIndex {
         self.total_node_hits = self.total_node_hits.saturating_add(1);
 

@@ -17,7 +17,7 @@ use crate::{
         hook::Hook,
         roller::Roller,
         state::State,
-        state_tree::{NodeIndex, StateHash, StateTree},
+        state_tree::{NodeIndex, StateTree},
     },
     utils::ProtectedCell,
 };
@@ -164,9 +164,9 @@ impl<'a, 'b> CombatContext<'a, 'b> {
 
     pub fn transition(&mut self, transition: Transition) -> anyhow::Result<()> {
         transition.apply(ProtectedCell::get_mut(&mut self.state))?;
-        let new_node = self.state_tree.add_node(StateHash::hash_state(&self.state));
-        self.state_tree
-            .add_edge(self.current_node, new_node, transition);
+        let new_node = self
+            .state_tree
+            .add_transition(self.current_node, &self.state, transition);
         self.current_node = new_node;
 
         match transition {
@@ -178,6 +178,13 @@ impl<'a, 'b> CombatContext<'a, 'b> {
             Transition::BeginTurn { actor } => {
                 for hook in &mut self.integrator.hooks {
                     hook.on_turn_start(&self.state, actor, self.state.turn);
+                }
+            }
+            Transition::AdvanceInitiative => {
+                let current_actor_id =
+                    self.state.initiative_order[self.state.current_turn_index.unwrap()];
+                for hook in &mut self.integrator.hooks {
+                    hook.on_advance_initiative(&self.state, current_actor_id);
                 }
             }
             Transition::EndTurn { actor } => {

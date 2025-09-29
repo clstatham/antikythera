@@ -80,87 +80,69 @@ impl LuaHook {
     }
 }
 
+macro_rules! lua_delegate {
+    ($self:expr, $func:ident, $($arg:expr),*) => {
+        if let Ok(globals) = $self.lua.globals().get::<LuaFunction>(stringify!($func))
+            && let Err(e) = globals.call::<()>(($($arg),*))
+        {
+            log::error!("Error in {}: {}", stringify!($func), e);
+            let _ = $self
+                .script_error_tx
+                .send(format!("Error in {}: {}", stringify!($func), e));
+        }
+    };
+}
+
 impl Hook for LuaHook {
     fn on_integration_start(&mut self, initial_state: &State) {
         self.reload_script();
-        if let Ok(globals) = self
-            .lua
-            .globals()
-            .get::<LuaFunction>("on_integration_start")
-            && let Err(e) = globals.call::<()>((LuaState(initial_state.clone()),))
-        {
-            log::error!("Error in on_integration_start: {}", e);
-            let _ = self
-                .script_error_tx
-                .send(format!("Error in on_integration_start: {}", e));
-        }
+        lua_delegate!(self, on_integration_start, LuaState(initial_state.clone()));
     }
 
     fn on_combat_start(&mut self, state: &State) {
-        if let Ok(globals) = self.lua.globals().get::<LuaFunction>("on_combat_start")
-            && let Err(e) = globals.call::<()>(LuaState(state.clone()))
-        {
-            log::error!("Error in on_combat_start: {}", e);
-            let _ = self
-                .script_error_tx
-                .send(format!("Error in on_combat_start: {}", e));
-        }
+        lua_delegate!(self, on_combat_start, LuaState(state.clone()));
     }
 
     fn on_turn_start(&mut self, state: &State, actor_id: ActorId, turn: u64) {
-        if let Ok(globals) = self.lua.globals().get::<LuaFunction>("on_turn_start")
-            && let Err(e) = globals.call::<()>((LuaState(state.clone()), actor_id.0 as i64, turn))
-        {
-            log::error!("Error in on_turn_start: {}", e);
-            let _ = self
-                .script_error_tx
-                .send(format!("Error in on_turn_start: {}", e));
-        }
+        lua_delegate!(
+            self,
+            on_turn_start,
+            LuaState(state.clone()),
+            actor_id.0 as i64,
+            turn
+        );
+    }
+
+    fn on_advance_initiative(&mut self, state: &State, actor_id: ActorId) {
+        lua_delegate!(
+            self,
+            on_advance_initiative,
+            LuaState(state.clone()),
+            actor_id.0 as i64
+        );
     }
 
     fn on_action_executed(&mut self, state: &State, action: &ActionTaken) {
-        if let Ok(globals) = self.lua.globals().get::<LuaFunction>("on_action_executed") {
-            let action = self.lua.to_value(action).unwrap_or(LuaValue::Nil);
-            if let Err(e) = globals.call::<()>((LuaState(state.clone()), action)) {
-                log::error!("Error in on_action_executed: {}", e);
-                let _ = self
-                    .script_error_tx
-                    .send(format!("Error in on_action_executed: {}", e));
-            }
-        }
+        let action = self.lua.to_value(&action).unwrap_or(LuaValue::Nil);
+        lua_delegate!(self, on_action_executed, LuaState(state.clone()), action);
     }
 
     fn on_turn_end(&mut self, state: &State, actor_id: ActorId, turn: u64) {
-        if let Ok(globals) = self.lua.globals().get::<LuaFunction>("on_turn_end")
-            && let Err(e) = globals.call::<()>((LuaState(state.clone()), actor_id.0 as i64, turn))
-        {
-            log::error!("Error in on_turn_end: {}", e);
-            let _ = self
-                .script_error_tx
-                .send(format!("Error in on_turn_end: {}", e));
-        }
+        lua_delegate!(
+            self,
+            on_turn_end,
+            LuaState(state.clone()),
+            actor_id.0 as i64,
+            turn
+        );
     }
 
     fn on_combat_end(&mut self, state: &State) {
-        if let Ok(globals) = self.lua.globals().get::<LuaFunction>("on_combat_end")
-            && let Err(e) = globals.call::<()>(LuaState(state.clone()))
-        {
-            log::error!("Error in on_combat_end: {}", e);
-            let _ = self
-                .script_error_tx
-                .send(format!("Error in on_combat_end: {}", e));
-        }
+        lua_delegate!(self, on_combat_end, LuaState(state.clone()));
     }
 
     fn on_integration_end(&mut self) {
-        if let Ok(globals) = self.lua.globals().get::<LuaFunction>("on_integration_end")
-            && let Err(e) = globals.call::<()>(())
-        {
-            log::error!("Error in on_integration_end: {}", e);
-            let _ = self
-                .script_error_tx
-                .send(format!("Error in on_integration_end: {}", e));
-        }
+        lua_delegate!(self, on_integration_end,);
     }
 
     fn metrics(&self) -> Vec<(String, f64)> {
