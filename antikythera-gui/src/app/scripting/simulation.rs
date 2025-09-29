@@ -49,10 +49,10 @@ impl LuaHook {
 
         // insert an empty table for metrics
         let globals = self.lua.globals();
-        if let Err(e) = globals.set("metrics", self.lua.create_table().unwrap()) {
+        if let Err(e) = globals.set("M", self.lua.create_table().unwrap()) {
             let _ = self
                 .script_error_tx
-                .send(format!("Error creating metrics table: {}", e));
+                .send(format!("Error creating metrics table `M`: {}", e));
         }
     }
 
@@ -83,12 +83,14 @@ impl LuaHook {
 macro_rules! lua_delegate {
     ($self:expr, $func:ident, $($arg:expr),*) => {
         if let Ok(globals) = $self.lua.globals().get::<LuaFunction>(stringify!($func))
-            && let Err(e) = globals.call::<()>(($($arg),*))
         {
-            log::error!("Error in {}: {}", stringify!($func), e);
-            let _ = $self
-                .script_error_tx
-                .send(format!("Error in {}: {}", stringify!($func), e));
+            let res = globals.call::<()>(($($arg),*));
+            if let Err(e) = res {
+                log::error!("Error in {}: {}", stringify!($func), e);
+                let _ = $self
+                    .script_error_tx
+                    .send(format!("Error in {}: {}", stringify!($func), e));
+            }
         }
     };
 }
@@ -147,7 +149,7 @@ impl Hook for LuaHook {
 
     fn metrics(&self) -> Vec<(String, f64)> {
         let mut result = Vec::new();
-        if let Ok(globals) = self.lua.globals().get::<LuaTable>("metrics") {
+        if let Ok(globals) = self.lua.globals().get::<LuaTable>("M") {
             for (key, value) in globals.pairs::<String, f64>().flatten() {
                 result.push((key, value));
             }

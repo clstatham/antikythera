@@ -7,7 +7,7 @@ function on_integration_start(initial_state)
     -- Initialize any state or metrics here
     turn_counter = 0
     combat_counter = 0
-    metrics["avg_turns"] = 0
+    M["avg_turns"] = 0
 end
 
 function on_combat_start(state)
@@ -23,10 +23,10 @@ end
 
 function on_combat_end(state)
     -- Called at the end of each combat
-    metrics["avg_turns"] = metrics["avg_turns"] + turn_counter
+    M["avg_turns"] = M["avg_turns"] + turn_counter
 end
 
 function on_integration_end()
     -- Finalize metrics here
-    metrics["avg_turns"] = metrics["avg_turns"] / combat_counter
+    M["avg_turns"] = M["avg_turns"] / combat_counter
 end

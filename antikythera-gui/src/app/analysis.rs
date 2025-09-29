@@ -173,18 +173,18 @@ impl AnalysisApp {
                         ui.heading("Result");
                         ui.end_row();
                         for metric in &self.metrics {
-                            ui.label(&metric.query_name);
-                            ui.label(&metric.result);
+                            ui.label(egui::RichText::new(&metric.query_name).monospace());
+                            ui.label(egui::RichText::new(metric.result.to_string()).monospace());
                             ui.end_row();
                         }
                         for (name, value) in &stats.hook_metrics {
-                            ui.label(name);
-                            ui.label(format!("{}", value));
+                            ui.label(egui::RichText::new(name).monospace());
+                            ui.label(egui::RichText::new(value.to_string()).monospace());
                             ui.end_row();
                         }
                         for (name, value) in &self.script_interface.metrics {
-                            ui.label(name);
-                            ui.label(format!("{}", value));
+                            ui.label(egui::RichText::new(name).monospace());
+                            ui.label(egui::RichText::new(value.to_string()).monospace());
                             ui.end_row();
                         }
                     });
