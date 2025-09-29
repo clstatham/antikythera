@@ -129,7 +129,7 @@ impl<'a, 'b> CombatContext<'a, 'b> {
     pub fn new(integrator: &'a mut Integrator, state_tree: &'b mut StateTree) -> Self {
         Self {
             state: ProtectedCell::new(integrator.initial_state.clone()),
-            current_node: state_tree.root,
+            current_node: state_tree.root(),
             state_tree,
             integrator,
         }

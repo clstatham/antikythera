@@ -94,11 +94,11 @@ impl EdgeKey {
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct StateTree {
-    pub initial_state: State,
-    pub root: NodeIndex,
-    pub nodes: Vec<NonZeroU64>,
-    pub total_node_hits: u64,
-    pub total_edge_hits: u64,
+    initial_state: State,
+    root: NodeIndex,
+    nodes: Vec<NonZeroU64>,
+    total_node_hits: u64,
+    total_edge_hits: u64,
     state_cache: HashMap<StateHash, NodeIndex, NoHashBuildHasher>,
     edge_cache: BTreeMap<EdgeKey, Edge>,
     neighbors: Vec<Vec<NodeIndex>>,
@@ -179,6 +179,10 @@ impl StateTree {
 
             Some(key)
         }
+    }
+
+    pub fn root(&self) -> NodeIndex {
+        self.root
     }
 
     pub fn node_count(&self) -> usize {
