@@ -48,7 +48,7 @@ impl AnalysisApp {
         if let Some(stats) = &self.stats {
             ui.label(format!(
                 "Loaded state tree with {} nodes",
-                stats.state_tree.graph.node_count()
+                stats.state_tree.node_count()
             ));
 
             ui.separator();

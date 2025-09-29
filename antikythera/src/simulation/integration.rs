@@ -6,7 +6,6 @@ use std::{
     },
 };
 
-use petgraph::graph::NodeIndex;
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -14,7 +13,12 @@ use crate::{
         Action, ActionEconomyUsage, ActionTaken, ActorId, ItemInner, RollSettings, Transition,
     },
     rules::actions::{AttackAction, UnarmedStrikeAction},
-    simulation::{hook::Hook, roller::Roller, state::State, state_tree::StateTree},
+    simulation::{
+        hook::Hook,
+        roller::Roller,
+        state::State,
+        state_tree::{NodeIndex, StateHash, StateTree},
+    },
     utils::ProtectedCell,
 };
 
@@ -89,7 +93,7 @@ impl Integrator {
         while self.should_continue() {
             self.run_combat(&mut state_tree)?;
         }
-        let elapsed = self.elapsed_time();
+        let elapsed_time = self.elapsed_time();
 
         for hook in &mut self.hooks {
             hook.on_integration_end();
@@ -102,7 +106,7 @@ impl Integrator {
         let results = IntegrationResults {
             state_tree,
             combats_run: self.combats_run(),
-            elapsed_time: elapsed,
+            elapsed_time,
             hook_metrics,
         };
         Ok(results)
@@ -160,7 +164,7 @@ impl<'a, 'b> CombatContext<'a, 'b> {
 
     pub fn transition(&mut self, transition: Transition) -> anyhow::Result<()> {
         transition.apply(ProtectedCell::get_mut(&mut self.state))?;
-        let new_node = self.state_tree.add_node(&self.state);
+        let new_node = self.state_tree.add_node(StateHash::hash_state(&self.state));
         self.state_tree
             .add_edge(self.current_node, new_node, transition);
         self.current_node = new_node;

@@ -133,11 +133,6 @@ fn main() -> anyhow::Result<()> {
         serde_json::from_reader(reader)?
     };
 
-    let mut file = std::fs::File::create("used_state.json")?;
-    let writer = std::io::BufWriter::new(&mut file);
-    serde_json::to_writer_pretty(writer, &initial_state)?;
-    log::info!("Wrote used initial state to used_state.json");
-
     let mut integrator = Integrator::new(args.combats, roller, initial_state.clone());
 
     log::info!("Running {} combats...", args.combats);
@@ -147,7 +142,7 @@ fn main() -> anyhow::Result<()> {
     log::info!(
         "Simulation complete: {} combats run in {} seconds ({:.2} combats/sec)",
         results.combats_run,
-        results.elapsed_time.num_seconds(),
+        results.elapsed_time.to_std().unwrap().as_secs_f64(),
         results.combats_per_second()
     );
 

@@ -187,8 +187,8 @@ impl SimulationApp {
             ui.separator();
             ui.label(format!(
                 "Simulation Results: {} states, {} transitions",
-                results.state_tree.graph.node_count(),
-                results.state_tree.graph.edge_count()
+                results.state_tree.node_count(),
+                results.state_tree.edge_count()
             ));
 
             if ui.button("Save Results").clicked()
