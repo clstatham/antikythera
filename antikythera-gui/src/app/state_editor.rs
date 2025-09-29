@@ -560,11 +560,10 @@ impl StateEditorApp {
     }
 
     fn state_json_ui(ui: &mut egui::Ui, _state: &mut State, ui_state: &mut StateEditorUiState) {
-        let response = egui_json_tree::JsonTree::new("state-json", &ui_state.state_json)
+        egui_json_tree::JsonTree::new("state-json", &ui_state.state_json)
             .style(egui_json_tree::JsonTreeStyle::new())
             .default_expand(egui_json_tree::DefaultExpand::All)
             .show(ui);
-        // if response.
     }
 
     fn state_ui(&mut self, ui: &mut egui::Ui) {
